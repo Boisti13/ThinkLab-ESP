@@ -1,0 +1,12 @@
+# PlatformIO build output
+.pio/
+.piolibdeps/
+.clang_complete
+.gcc-flags.json
+
+# VSCode settings (optional)
+.vscode/
+
+# OS-specific
+.DS_Store
+Thumbs.db
