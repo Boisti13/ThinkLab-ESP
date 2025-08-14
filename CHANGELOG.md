@@ -1,6 +1,14 @@
 # Changelog
 
 ## [0.1.5] - 2025-08-14
+- Refactored DisplayManager to fix GxEPD2 constructor call
+- Matched page title return type to existing pages
+- Added DEBUG_IN_ROTATION flag to control Debug page rotation inclusion
+- Kept pins and init compatible with previous versions
+
+---
+
+## [0.1.5] - 2025-08-14
 ### Added
 - Fan1 PWM + tachometer module (`fan1_pwm`, `fan1_tach`)
 - Fan2 tachometer module (`fan2_tach`)

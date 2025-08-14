@@ -1,36 +1,45 @@
 #pragma once
-#include <GxEPD2_BW.h>
-#include "state.h"
 #include "config.h"
+#include "state.h"
 
-// Concrete display type
+#include <GxEPD2_BW.h>
+#include <Fonts/FreeMono9pt7b.h>
+#include <Fonts/FreeMonoBold9pt7b.h>
+
+// Panel/type alias: 200x200 SSD1681
 using Epd_t = GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT>;
 
+// Simple page interface
 struct IPage {
+  virtual ~IPage() {}
+  // Match existing pages (return const char*)
   virtual const char* title() const = 0;
   virtual void render(Epd_t& d, const HostState& host, const UiState& ui) = 0;
-  virtual ~IPage() = default;
 };
 
 class DisplayManager {
 public:
   DisplayManager();
-  void begin();                        // init display (silent), set rotation
-  void toast(const __FlashStringHelper* msg);
 
-  void registerPage(IPage* page, bool isDebug=false);
-  uint8_t pageCount(const UiState& ui) const;
-  void renderCurrent(const HostState& host, const UiState& ui);
+  void   begin();                               // init display
+  void   toast(const __FlashStringHelper* msg); // simple centered message
 
-  // Access to underlying display for splash etc.
-  Epd_t& display() { return epd; }
+  void   registerPage(IPage* page, bool isDebug);
+  uint8_t pageCount(const UiState& ui) const;   // counts pages included in rotation
+  void   renderCurrent(const HostState& host, const UiState& ui);
+
+  Epd_t& display();                              // access to underlying GxEPD2
 
 private:
-  Epd_t epd;
-  static const uint8_t MAXP = 8;
-  IPage* pages[MAXP] = {nullptr};
-  bool   pagesIsDebug[MAXP] = {false};
-  uint8_t total = 0;
+  struct Entry { IPage* page; bool isDebug; };
+  static constexpr uint8_t MAX_PAGES = 12;
 
-  int mapUiIndexToReal(const UiState& ui) const;
+  Entry   _pages[MAX_PAGES];
+  uint8_t _count;
+
+  // Map UiState.currentPage (filtered index) to actual index in _pages[]
+  int     mapUiIndexToReal(const UiState& ui) const;
+
+  // E‑ink display instance (pins: CS, DC, RST, BUSY) — constructed with panel object
+  Epd_t   _display;
 };
