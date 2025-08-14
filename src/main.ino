@@ -16,10 +16,17 @@
 #if USE_DALLAS
   #include "modules/dallas.h"
 #endif
-#if USE_FANCTRL
-  #include "modules/fan.h"
-#endif
 
+#if USE_FAN1
+  #include "modules/fan1_pwm.h"
+  #include "modules/fan1_tach.h"
+#endif
+#if USE_FAN2_TACH
+  #include "modules/fan2_tach.h"
+#endif
+#if USE_EXPERIMENTAL
+  #include "modules/experimental.h"
+#endif
 
 // Pages
 #include "pages/page_overview.h"
@@ -120,6 +127,18 @@ void setup() {
   g_fan.begin();
 #endif
 
+#if USE_FAN1
+  fan1PwmBegin();
+  fan1TachBegin();
+#endif
+#if USE_FAN2_TACH
+  fan2TachBegin();
+#endif
+#if USE_EXPERIMENTAL
+  experimentalBegin();
+#endif
+
+
   // Register pages; mark Debug as debug-only
   g_disp.registerPage(&g_pageOverview, /*isDebug*/false);
   g_disp.registerPage(&g_pageDisks,    /*isDebug*/false);
@@ -145,9 +164,17 @@ void loop() {
   g_dallas.tick();
   g_host.local_temp_c = g_dallas.lastC(); 
 #endif
-#if USE_FANCTRL
-  g_fan.tick();
+
+#if USE_FAN1
+  fan1TachTick();
 #endif
+#if USE_FAN2_TACH
+  fan2TachTick();
+#endif
+#if USE_EXPERIMENTAL
+  experimentalTick(g_ui);
+#endif
+
 
   // Touch events (if button attached)
   switch (g_touch.poll()) {
