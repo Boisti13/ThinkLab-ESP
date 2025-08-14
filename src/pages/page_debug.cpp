@@ -3,7 +3,6 @@
 #include "state.h"
 #include "config.h"
 #include <Fonts/FreeMono9pt7b.h>
-#include <Fonts/Picopixel.h>
 
 #if USE_FAN1
   #include "modules/fan1_pwm.h"
@@ -22,7 +21,6 @@ void PageDebug::render(Epd_t& d, const HostState& host, const UiState& ui) {
 
     ui::header(d, F("Debug"));
     d.setFont(&FreeMono9pt7b);
-    //d.setFont(&Picopixel);
 
     // layout knobs (LOCAL)
     const int16_t LINE_H = 15;

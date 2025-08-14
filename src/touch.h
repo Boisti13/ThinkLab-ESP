@@ -1,17 +1,21 @@
-// touch.h  (top of file)
 #pragma once
-#include <Arduino.h>   // <-- add this
+#include <Arduino.h>
 #include "config.h"
 
-enum ButtonEvent { BTN_NONE, BTN_SHORT, BTN_LONG, BTN_VLONG };
+enum class ButtonEvent : uint8_t { None, Tap, DoubleTap, LongPress };
 
 class TouchInput {
 public:
   void begin();
-  ButtonEvent poll();
+  ButtonEvent poll();  // non-blocking; call every loop()
+
 private:
-  int       last = HIGH;
-  uint32_t  lastChange = 0;
-  bool      pressed = false;
-  uint32_t  t0 = 0;
+  int      lastLevel = HIGH;
+  uint32_t lastChange = 0;
+  uint32_t pressT0 = 0;
+  bool     pressed = false;
+
+  // double-tap tracking
+  uint32_t lastTapMs = 0;
+  bool     waitingSecondTap = false;
 };

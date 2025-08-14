@@ -1,5 +1,5 @@
 /*
-  hl-hostmon-esp — modular skeleton (v0.1.0 baseline)
+  hl-hostmon-esp — main (v0.1.x)
   Board: ESP32-C3 (Super Mini)
 */
 
@@ -35,6 +35,10 @@
 #include "pages/page_network.h"
 #include "pages/page_debug.h"
 
+#include <Fonts/FreeMono9pt7b.h>
+#include <Fonts/FreeMonoBold9pt7b.h>
+
+// ==== Globals ====
 HostState      g_host;
 UiState        g_ui;
 DisplayManager g_disp;
@@ -47,22 +51,28 @@ WifiOta        g_wifi;
 #if USE_DALLAS
 DallasProbe    g_dallas;
 #endif
-#if USE_FANCTRL
-FanController  g_fan;
-#endif
 
-#include <Fonts/FreeMono9pt7b.h>
-#include <Fonts/FreeMonoBold9pt7b.h>
-
-// Pages (owned statically)
+// Page objects
 PageOverview   g_pageOverview;
 PageDisks      g_pageDisks;
 PageVMs        g_pageVMs;
 PageNetwork    g_pageNetwork;
 PageDebug      g_pageDebug;
 
-static uint32_t lastDisplayMs = 0;
+static uint32_t lastDisplayMs = 0;   // rotation timer (0 means not started)
+static bool     bootCleared   = false; // leave splash once first data arrives
 
+// ---- helpers ----
+static inline void renderNow() {
+  g_disp.renderCurrent(g_host, g_ui);
+}
+
+static inline void renderDebugDirect() {
+  auto &d = g_disp.display();
+  g_pageDebug.render(d, g_host, g_ui);
+}
+
+// ---- splash ----
 static void splash() {
   auto& d = g_disp.display();
   const int16_t W = d.width();
@@ -74,15 +84,15 @@ static void splash() {
     d.fillScreen(GxEPD_WHITE);
     d.setTextColor(GxEPD_BLACK);
 
-    // --- Headline (classic font, clamped size, faux-bold) ---
-    d.setFont(); // classic 5x7 font (scalable)
+    // Headline (classic font, clamped size, faux-bold)
+    d.setFont(); // classic 5x7
     const int len = strlen(TITLE);
     const int16_t padX = 6;
     const int16_t avail = W - 2 * padX;
 
-    int size = avail / (len * 6);        // ~6 px/char at size=1
+    int size = avail / (len * 6);     // ~6 px/char at size=1
     if (size < 1) size = 1;
-    if (size > 3) size = 3;              // <-- clamp so it’s not gigantic (tweak 2–3 to taste)
+    if (size > 3) size = 3;           // clamp so it’s not gigantic
 
     const int16_t titleW = len * 6 * size;
     const int16_t titleH = 8 * size;
@@ -91,11 +101,11 @@ static void splash() {
     int16_t y = (H - titleH) / 2 - 6;
 
     d.setTextSize(size);
-    d.setCursor(x, y);        d.print(TITLE);
-    d.setCursor(x + 1, y);    d.print(TITLE);   // faux bold
+    d.setCursor(x, y);     d.print(TITLE);
+    d.setCursor(x + 1, y); d.print(TITLE); // faux bold
 
-    // --- Subtitle ---
-    d.setTextSize(1);                   // reset classic scaling
+    // Subtitle
+    d.setTextSize(1);
     d.setFont(&FreeMono9pt7b);
     String sub = F("Booting...");
     int16_t x1, y1; uint16_t w, h;
@@ -107,15 +117,15 @@ static void splash() {
   } while (d.nextPage());
 }
 
-
+// ======================= setup =======================
 void setup() {
-  // USB CDC (no debug prints to keep host link clean)
+  // USB CDC (no debug prints — Serial is for host protocol)
   Serial.setRxBufferSize(8192);
   Serial.begin(115200);
   Serial.setRxBufferSize(8192);
 
-  g_disp.begin();            // silent init; rotation set inside
-  g_touch.begin();           // button on PIN_TOUCH (safe if not connected)
+  g_disp.begin();      // init EPD (rotation inside DM)
+  g_touch.begin();     // button on TOUCH_PIN (safe if not connected)
 
 #if USE_WIFI
   g_wifi.begin();
@@ -123,10 +133,6 @@ void setup() {
 #if USE_DALLAS
   g_dallas.begin();
 #endif
-#if USE_FANCTRL
-  g_fan.begin();
-#endif
-
 #if USE_FAN1
   fan1PwmBegin();
   fan1TachBegin();
@@ -138,33 +144,38 @@ void setup() {
   experimentalBegin();
 #endif
 
-
-  // Register pages; mark Debug as debug-only
+  // Register pages; keep Debug registered as debug-only (not in normal roll)
   g_disp.registerPage(&g_pageOverview, /*isDebug*/false);
   g_disp.registerPage(&g_pageDisks,    /*isDebug*/false);
   g_disp.registerPage(&g_pageVMs,      /*isDebug*/false);
   g_disp.registerPage(&g_pageNetwork,  /*isDebug*/false);
-  g_disp.registerPage(&g_pageDebug,    /*isDebug*/true);  // in roll only when g_ui.debugEnabled==true
+  g_disp.registerPage(&g_pageDebug,    /*isDebug*/true); // not in normal rotation
 
   splash();
 
   g_serial.begin(); // sends INFO once
-  lastDisplayMs = millis();
+  // NOTE: do NOT set lastDisplayMs here; we start it when first data arrives
 }
 
+// ======================= loop =======================
 void loop() {
-  // Serial client: reads / parses / polls GET at interval
+  // --- Host serial client (read, parse, poll GET interval)
   g_serial.tick(g_host, g_ui);
 
-  // Optional modules
+  // Leave splash automatically once first valid data arrives (Option B)
+  if (!bootCleared && g_ui.firstDataReady) {
+    bootCleared   = true;
+    lastDisplayMs = millis();   // start auto-rotation timer now
+    renderNow();                // show first real page
+  }
+
 #if USE_WIFI
   g_wifi.tick();
 #endif
 #if USE_DALLAS
   g_dallas.tick();
-  g_host.local_temp_c = g_dallas.lastC(); 
+  g_host.local_temp_c = g_dallas.lastC();
 #endif
-
 #if USE_FAN1
   fan1TachTick();
 #endif
@@ -175,48 +186,82 @@ void loop() {
   experimentalTick(g_ui);
 #endif
 
+  // --- Handle touch events (non-blocking to allow double-tap)
+  ButtonEvent ev = g_touch.poll();
 
-  // Touch events (if button attached)
-  switch (g_touch.poll()) {
-    case BTN_VLONG:
-      g_ui.debugEnabled = !g_ui.debugEnabled;
-      g_disp.toast(g_ui.debugEnabled ? F("Debug: ON") : F("Debug: OFF"));
-      break;
-    case BTN_LONG:
-      g_ui.mode = (g_ui.mode == MODE_TOUCH) ? MODE_AUTO : MODE_TOUCH;
-      g_disp.toast(g_ui.mode == MODE_TOUCH ? F("Mode: TOUCH") : F("Mode: AUTO"));
-      break;
-    case BTN_SHORT:
-      if (g_ui.mode == MODE_TOUCH) {
-        // One-pass cycle through the enabled pages
-        uint8_t pages = g_disp.pageCount(g_ui);
-        for (uint8_t p = 0; p < pages; ++p) {
-          g_ui.currentPage = p;
-          g_disp.renderCurrent(g_host, g_ui);
-          delay(PAGE_DWELL_MS);
-        }
+  if (ev == ButtonEvent::DoubleTap) {
+    // Cancel any pending single-tap
+    g_ui.tapPending = false;
+
+    // Toggle dedicated Debug mode (not part of normal rotation)
+    g_ui.inDebugMode      = !g_ui.inDebugMode;
+    g_ui.lastDebugRefresh = 0; // force immediate refresh
+
+    // Render immediately: Debug page directly, or normal page via DM
+    if (g_ui.inDebugMode) {
+      renderDebugDirect();
+    } else {
+      renderNow();
+    }
+
+  } else if (ev == ButtonEvent::LongPress) {
+    // Cancel any pending tap
+    g_ui.tapPending = false;
+
+    // Toggle TOUCH/AUTO mode
+    g_ui.mode = (g_ui.mode == MODE_TOUCH) ? MODE_AUTO : MODE_TOUCH;
+
+    // Re-render current view (Debug or normal)
+    if (g_ui.inDebugMode) {
+      renderDebugDirect();
+    } else {
+      renderNow();
+    }
+
+  } else if (ev == ButtonEvent::Tap) {
+    if (!g_ui.inDebugMode) {
+      // Defer single-tap action until double-tap window expires (prevents e-ink blocking)
+      g_ui.tapPending    = true;
+      g_ui.tapDeadlineMs = millis() + TOUCH_DBL_MS; // e.g., 350 ms
+    }
+  }
+
+  // --- Commit pending single-tap after double-tap window passes
+  if (g_ui.tapPending && (int32_t)(millis() - g_ui.tapDeadlineMs) >= 0) {
+    g_ui.tapPending = false;
+
+    // In normal mode: first tap = refresh, second within ADVANCE window = advance
+    if (!g_ui.inDebugMode) {
+      if (millis() > g_ui.advanceArmUntilMs) {
+        // First tap: refresh current page & arm the advance window
+        renderNow();
+        g_ui.advanceArmUntilMs = millis() + TOUCH_ADVANCE_ARM_MS; // e.g., 20s
       } else {
-        g_disp.renderCurrent(g_host, g_ui);
+        // Second tap inside the advance window: advance page & disarm
+        uint8_t n = g_disp.pageCount(g_ui);
+        g_ui.currentPage = (n == 0) ? 0 : (g_ui.currentPage + 1) % n;
+        renderNow();
+        g_ui.advanceArmUntilMs = 0;
       }
-      break;
-    case BTN_NONE:
-    default:
-      break;
+    }
   }
 
-  // Auto mode page rotation
+  // --- Periodic refresh in dedicated Debug mode
+  if (g_ui.inDebugMode) {
+    uint32_t nowDbg = millis();
+    if (nowDbg - g_ui.lastDebugRefresh >= DEBUG_REFRESH_MS) {
+      renderDebugDirect();
+      g_ui.lastDebugRefresh = nowDbg;
+    }
+  }
+
+  // --- Auto mode page rotation (paused in debug mode)
   uint32_t now = millis();
-  if (g_ui.mode == MODE_AUTO && (now - lastDisplayMs >= DISPLAY_INTERVAL_MS)) {
+  if (!g_ui.inDebugMode && g_ui.mode == MODE_AUTO &&
+      (lastDisplayMs != 0) && (now - lastDisplayMs >= DISPLAY_INTERVAL_MS)) {
     lastDisplayMs = now;
-    g_disp.renderCurrent(g_host, g_ui);
-    // advance to next enabled page
-    uint8_t pages = g_disp.pageCount(g_ui);
-    g_ui.currentPage = (pages == 0) ? 0 : (g_ui.currentPage + 1) % pages;
-  }
-
-  // First data render safeguard (if you want it): render once after first parse
-  if (g_ui.firstDataReady && !g_ui.firstRenderDone) {
-    g_ui.firstRenderDone = true;
-    g_disp.renderCurrent(g_host, g_ui);
+    renderNow();
+    uint8_t n = g_disp.pageCount(g_ui);
+    g_ui.currentPage = (n == 0) ? 0 : (g_ui.currentPage + 1) % n;
   }
 }

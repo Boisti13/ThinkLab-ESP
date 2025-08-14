@@ -1,10 +1,25 @@
 # Changelog
 
+# Changelog
+
 ## [0.1.6] - 2025-08-14
-- Refactored DisplayManager to fix GxEPD2 constructor call
-- Matched page title return type to existing pages
-- Added DEBUG_IN_ROTATION flag to control Debug page rotation inclusion
-- Kept pins and init compatible with previous versions
+### Added
+- `DEBUG_IN_ROTATION` flag to control whether the Debug page appears in normal page rotation.
+- Double-tap gesture to enter/exit dedicated Debug mode (Debug page refreshes on its own timer in this mode).
+
+### Changed
+- Refactored `DisplayManager`:
+  - Fixed GxEPD2 display constructor to match current API.
+  - Changed `display()` method to return explicit reference type (removed `auto` deduction dependency on C++14).
+  - Updated page title functions to return `__FlashStringHelper*` for consistency.
+- Adjusted touch button handling logic:
+  - Single-tap refreshes current page, second tap (within threshold) advances to next page.
+  - Long-press toggles Touch ↔ Auto page rotation modes.
+
+### Fixed
+- Splash screen no longer blocks until touch input.
+- Build errors from incompatible return types in page title functions.
+- Removed Debug page from rotation unless explicitly enabled via `DEBUG_IN_ROTATION`.
 
 ---
 

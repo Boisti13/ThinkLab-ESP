@@ -32,8 +32,41 @@
 #define PIN_EPD_DC   1
 #define PIN_EPD_RST  2
 #define PIN_EPD_BUSY 3
-#define PIN_TOUCH    10
 #define PIN_ONEWIRE  8
+
+// ===== Touch / Button =====
+
+// Button polarity: 1 = active LOW (with INPUT_PULLUP), 0 = active HIGH (with INPUT_PULLDOWN)
+#ifndef TOUCH_ACTIVE_LOW
+  #define TOUCH_ACTIVE_LOW 0
+#endif
+
+#ifndef TOUCH_PIN
+  #define TOUCH_PIN 10
+#endif
+#ifndef TOUCH_DEBOUNCE_MS
+  #define TOUCH_DEBOUNCE_MS 30
+#endif
+#ifndef TOUCH_LONG_MS
+  #define TOUCH_LONG_MS 900     // long-press threshold
+#endif
+#ifndef TOUCH_DBL_MS
+  #define TOUCH_DBL_MS 350      // double-tap window
+#endif
+#ifndef TOUCH_ADVANCE_ARM_MS
+  #define TOUCH_ADVANCE_ARM_MS 20000  // 20s: second press advances page
+#endif
+
+// ===== Debug mode refresh =====
+#ifndef DEBUG_REFRESH_MS
+  #define DEBUG_REFRESH_MS 5000
+#endif
+
+// Debug page participation in normal rotation (0 = only via double‑tap; 1 = included)
+#ifndef DEBUG_IN_ROTATION
+  #define DEBUG_IN_ROTATION 0
+#endif
+
 
 // Timings (ms)
 #define POLL_INTERVAL_MS     2000

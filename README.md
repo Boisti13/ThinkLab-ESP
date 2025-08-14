@@ -219,4 +219,3 @@ Libraries:
 - Adafruit for **GFX**
 - Benoît Blanchon for **ArduinoJson**
 - Miles Burton et al. for **DallasTemperature**
-- ThinkLab project contributors
