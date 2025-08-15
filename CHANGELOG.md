@@ -1,6 +1,37 @@
 # Changelog
 
-# Changelog
+## [0.1.7] - 2025-08-15
+### Added
+- **Fan controller module** (`fanctrl`):
+  - Dallas temperature–based PWM control for `FAN1` using a piecewise-linear curve.
+  - Soft start-kick, smoothing, and rate limiting to reduce noise and wear.
+  - Fallback safe speed if Dallas sensor data is invalid for more than 15s.
+  - Configurable curve points and behavior via `platformio.ini` build flags.
+  - Stores `fan_duty_cmd`, `fan_duty_filt`, and `fan_active` in `HostState` for UI display.
+- **Debug Page – Fan Visibility Controls**:
+  - Added compile-time switches to enable/disable individual fan information lines:
+    - `DBG_SHOW_FAN1_PWM` – show/hide Fan1 PWM %
+    - `DBG_SHOW_FAN1_RPM` – show/hide Fan1 RPM
+    - `DBG_SHOW_FAN2_RPM` – show/hide Fan2 RPM
+    - `DBG_SHOW_FAN_BLOCK` – master toggle for `FanCmd`, `FanOut`, and `FanAct`
+    - `DBG_SHOW_FAN_CMD` / `DBG_SHOW_FAN_OUT` / `DBG_SHOW_FAN_ACT` – fine-grained toggles inside block
+  - Defaults in `config.h`, overrideable in `platformio.ini` via `build_flags`.
+  - Defaults preserve previous behavior (all fan lines visible).
+
+### Changed
+- **Debug page**:
+  - Added Fan1 telemetry:
+    - Live commanded duty (`FanCmd`)
+    - Filtered/applied duty (`FanOut`)
+    - Fan active status (`FanAct`)
+    - Existing Fan1 PWM % and RPM display preserved.
+  - Fixed layout alignment by replacing undefined `L` with `labelX` for new Fan block.
+
+### Fixed
+- **Serial robustness**:
+  - Accepts only `schema_version == 1`.
+  - Drops explicit host error frames (e.g., `{"error":"unknown_command",...}`).
+  - Non-JSON chatter already ignored by the brace-framed reader.
 
 ## [0.1.6] - 2025-08-14
 ### Added

@@ -102,6 +102,12 @@ struct HostState {
   // Local sensors (ESP-side)
   float    local_temp_c               = NAN;
 
+  // ---- Fan telemetry / command (Dallas-only controller) ----
+  float   fan_duty_cmd   = NAN;   // pre-smoothing command (%)
+  float   fan_duty_filt  = NAN;   // post-smoothing (%)
+  uint8_t fan_active     = 0;     // 1 while kick or duty>0
+  uint32_t fan_last_valid_ms = 0; // last time Dallas was valid
+
   // Debug/preview
   String   last_json; // last received JSON (truncated by RX buffer if needed)
 };

@@ -94,13 +94,27 @@ bool SerialClient::parseAndStore(const char* json, size_t len, HostState& host, 
   DeserializationError err = deserializeJson(s_doc, json, len);
   if (err) { ui.parseErrCount++; return false; }
 
+  JsonVariantConst root = s_doc.as<JsonVariantConst>();
+
+  // --- NEW: accept only our schema; ignore other JSON or host chatter ---
+  const int schema = root["schema_version"] | -1;
+  if (schema != 1) {
+    // optional: ui.parseErrCount++  // keep if you want a visible counter bump
+    return false;
+  }
+
+  // --- NEW: ignore explicit error frames from the host (e.g., unknown commands) ---
+  if (!root["error"].isNull()) {
+    // e.g. {"error":"unknown_command","cmd":"_Update_Full : 1403999"}
+    return false;
+  }
+
+  // From here on, we know it’s a valid v1 payload we care about
   ui.parseOkCount++;
   ui.lastParseOkMs = millis();
   ui.firstDataReady = true;
 
-  JsonVariantConst root = s_doc.as<JsonVariantConst>();
-
-  // Keep preview for Debug page
+  // Keep preview for Debug page (only for accepted payloads)
   host.last_json = String(json, len);
 
   // ---- top-level we use ----
@@ -184,23 +198,6 @@ bool SerialClient::parseAndStore(const char* json, size_t len, HostState& host, 
         const char* st = c["status"] | "";
         dst.running = (st && strcmp(st, "running") == 0);
       }
-    }
-  }
-
-  // ---- Disks (simple & robust for new schema) ----
-  host.disk_count = 0;
-  if (root["disks"].is<JsonArrayConst>()) {
-    const size_t CAP = sizeof(host.disks) / sizeof(host.disks[0]);
-    for (JsonObjectConst jd : root["disks"].as<JsonArrayConst>()) {
-      if (host.disk_count >= CAP) break;
-      auto &out = host.disks[host.disk_count++];
-      const char* nm = jd["name"] | "";
-      safeCopy(out.name, sizeof(out.name), nm);
-      out.temp_c = jd["temp_C"].isNull() ? -127 : jd["temp_C"].as<int16_t>();
-
-      const char* st = jd["state"] | "";
-      // active if state says "active" (or "active/idle")
-      out.active = (st && (strcmp(st, "active") == 0 || strcmp(st, "active/idle") == 0));
     }
   }
 
