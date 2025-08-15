@@ -69,7 +69,7 @@
 
 
 // Timings (ms)
-#define POLL_INTERVAL_MS     2000
+#define POLL_INTERVAL_MS     60000
 #define DISPLAY_INTERVAL_MS  5000
 #define PAGE_DWELL_MS        5000
 #define DEBOUNCE_MS          30
@@ -82,7 +82,7 @@
 
 // Host timeout
 #ifndef LINK_TIMEOUT_S
-#define LINK_TIMEOUT_S 30   // consider the host "offline" if no JSON within this many seconds
+#define LINK_TIMEOUT_S 600   // consider the host "offline" if no JSON within this many seconds
 #endif
 
 // ===================== Fan 1 (PWM + tach) =====================
@@ -113,6 +113,9 @@
 #endif
 #ifndef FAN1_TACH_TIMEOUT_MS
   #define FAN1_TACH_TIMEOUT_MS 2000  // no pulses → 0 RPM
+#endif
+#ifndef FAN1_PWM_SET
+  #define FAN1_PWM_SET(pct) fan1PwmSet(pct)
 #endif
 
 // ===================== Fan 2 (tach-only) ======================
@@ -157,4 +160,93 @@
 #endif
 #ifndef FAN1_SWEEP_PERIOD_MS
   #define FAN1_SWEEP_PERIOD_MS 30000
+#endif
+
+// ==== Fan control (Dallas-only) ====
+#ifndef USE_FANCTRL
+  #define USE_FANCTRL 1
+#endif
+
+#ifndef FAN_OFF_BELOW_PCT
+  #define FAN_OFF_BELOW_PCT 5      // commanded < 5% -> 0%
+#endif
+#ifndef FAN_MIN_DUTY_PCT
+  #define FAN_MIN_DUTY_PCT 8       // reliable minimum
+#endif
+#ifndef FAN_RATE_PCT_PER_S
+  #define FAN_RATE_PCT_PER_S 10    // slope limiter (up/down)
+#endif
+#ifndef FAN_ALPHA_Q8
+  #define FAN_ALPHA_Q8 64          // 64/256 = 0.25 smoothing
+#endif
+#ifndef FAN_KICK_MS
+  #define FAN_KICK_MS 250
+#endif
+#ifndef FAN_KICK_PCT
+  #define FAN_KICK_PCT 100
+#endif
+#ifndef FAN_INVALID_HOLD_MS
+  #define FAN_INVALID_HOLD_MS 15000  // after this, go safe
+#endif
+#ifndef FAN_SAFE_PCT
+  #define FAN_SAFE_PCT 40
+#endif
+#ifndef FAN_TICK_MS
+  #define FAN_TICK_MS 200          // 5 Hz
+#endif
+
+// Curve points (°C → duty %)
+#ifndef FC_PT1_C
+  #define FC_PT1_C 35
+#endif
+#ifndef FC_PT1_P
+  #define FC_PT1_P 0
+#endif
+#ifndef FC_PT2_C
+  #define FC_PT2_C 40
+#endif
+#ifndef FC_PT2_P
+  #define FC_PT2_P 15
+#endif
+#ifndef FC_PT3_C
+  #define FC_PT3_C 45
+#endif
+#ifndef FC_PT3_P
+  #define FC_PT3_P 25
+#endif
+#ifndef FC_PT4_C
+  #define FC_PT4_C 50
+#endif
+#ifndef FC_PT4_P
+  #define FC_PT4_P 50
+#endif
+#ifndef FC_PT5_C
+  #define FC_PT5_C 55
+#endif
+#ifndef FC_PT5_P
+  #define FC_PT5_P 100
+#endif
+
+// ---- Debug page fan visibility (compile-time) ----
+#ifndef DBG_SHOW_FAN1_PWM
+  #define DBG_SHOW_FAN1_PWM 1
+#endif
+#ifndef DBG_SHOW_FAN1_RPM
+  #define DBG_SHOW_FAN1_RPM 1
+#endif
+#ifndef DBG_SHOW_FAN2_RPM
+  #define DBG_SHOW_FAN2_RPM 1
+#endif
+
+#ifndef DBG_SHOW_FAN_BLOCK
+  #define DBG_SHOW_FAN_BLOCK 1  // master switch for FanCmd/FanOut/FanAct
+#endif
+#ifndef DBG_SHOW_FAN_CMD
+  #define DBG_SHOW_FAN_CMD 1
+#endif
+#ifndef DBG_SHOW_FAN_OUT
+  #define DBG_SHOW_FAN_OUT 1
+#endif
+#ifndef DBG_SHOW_FAN_ACT
+  #define DBG_SHOW_FAN_ACT 1
 #endif
