@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.8] - 2025-08-15
+### Changed
+- **Overview page**:
+  - Strips CIDR suffix from displayed IP address during rendering  
+    (e.g., `192.168.100.103/24` → `192.168.100.103`).
+  - Kept `"Case:"` label for server internal/case temperature (unchanged from previous behavior).
+  - No parser changes; render-only tweak in `page_overview.cpp`.
+  - Preserves existing formats:
+    - Right-aligned values
+    - CPU % with one decimal
+    - RAM `used/total GiB`
+    - Uptime `Xd Yh`
+
 ## [0.1.7] - 2025-08-15
 ### Added
 - **Fan controller module** (`fanctrl`):

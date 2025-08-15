@@ -85,6 +85,42 @@ void SerialClient::tick(HostState& host, UiState& ui) {
   }
 }
 
+// Helper: map disk state string -> active flag
+static bool stateIsActive(const char* st) {
+  if (!st) return false;
+  // normalize common values
+  if (strcmp(st, "active") == 0)   return true;
+  if (strcmp(st, "idle") == 0)     return false;
+  if (strcmp(st, "standby") == 0)  return false;
+  // Some tools emit numbers or other tokens; be conservative:
+  // treat anything that equals "1" or "true" as active
+  if (strcmp(st, "1") == 0)        return true;
+  if (strcasecmp(st, "true") == 0) return true;
+  return false;
+}
+
+// Helper: extract temperature; returns sentinel -127 if missing/null
+static int8_t extractDiskTempC(JsonObjectConst d) {
+  // accept a few key spellings
+  if (!d["temp_C"].isNull()) {
+    if (d["temp_C"].is<JsonInteger>()) return (int8_t)d["temp_C"].as<int>();
+    if (d["temp_C"].is<float>())       return (int8_t)lroundf(d["temp_C"].as<float>());
+    // null or non-numeric -> sentinel
+    return -127;
+  }
+  if (!d["temp_c"].isNull()) {
+    if (d["temp_c"].is<JsonInteger>()) return (int8_t)d["temp_c"].as<int>();
+    if (d["temp_c"].is<float>())       return (int8_t)lroundf(d["temp_c"].as<float>());
+    return -127;
+  }
+  if (!d["temperature_C"].isNull()) {
+    if (d["temperature_C"].is<JsonInteger>()) return (int8_t)d["temperature_C"].as<int>();
+    if (d["temperature_C"].is<float>())       return (int8_t)lroundf(d["temperature_C"].as<float>());
+    return -127;
+  }
+  return -127;
+}
+
 bool SerialClient::parseAndStore(const char* json, size_t len, HostState& host, UiState& ui) {
   if (!json || len == 0) return false;
 
@@ -96,20 +132,18 @@ bool SerialClient::parseAndStore(const char* json, size_t len, HostState& host, 
 
   JsonVariantConst root = s_doc.as<JsonVariantConst>();
 
-  // --- NEW: accept only our schema; ignore other JSON or host chatter ---
+  // --- accept only our schema; ignore other JSON or host chatter ---
   const int schema = root["schema_version"] | -1;
   if (schema != 1) {
-    // optional: ui.parseErrCount++  // keep if you want a visible counter bump
     return false;
   }
 
-  // --- NEW: ignore explicit error frames from the host (e.g., unknown commands) ---
+  // --- ignore explicit error frames from the host ---
   if (!root["error"].isNull()) {
-    // e.g. {"error":"unknown_command","cmd":"_Update_Full : 1403999"}
     return false;
   }
 
-  // From here on, we know it’s a valid v1 payload we care about
+  // From here on, it’s a valid v1 payload we care about
   ui.parseOkCount++;
   ui.lastParseOkMs = millis();
   ui.firstDataReady = true;
@@ -183,7 +217,8 @@ bool SerialClient::parseAndStore(const char* json, size_t len, HostState& host, 
         const char* nm = v["name"] | "";
         strncpy(dst.name, nm, sizeof(dst.name) - 1);
         const char* st = v["status"] | "";
-        dst.running = (st && strcmp(st, "running") == 0);
+        // Some hosts send "running"/"stopped"; yours sends "0"/"1"
+        dst.running = (st && (strcmp(st, "running") == 0 || strcmp(st, "1") == 0));
       }
     }
 
@@ -196,7 +231,7 @@ bool SerialClient::parseAndStore(const char* json, size_t len, HostState& host, 
         const char* nm = c["name"] | "";
         strncpy(dst.name, nm, sizeof(dst.name) - 1);
         const char* st = c["status"] | "";
-        dst.running = (st && strcmp(st, "running") == 0);
+        dst.running = (st && (strcmp(st, "running") == 0 || strcmp(st, "1") == 0));
       }
     }
   }
@@ -254,6 +289,37 @@ bool SerialClient::parseAndStore(const char* json, size_t len, HostState& host, 
         uint64_t tx_Bps = best["tx_Bps"].isNull() ? 0ULL : best["tx_Bps"].as<uint64_t>();
         host.net_rx_kbps = (float)(rx_Bps * 8ULL) / 1000.0f;
         host.net_tx_kbps = (float)(tx_Bps * 8ULL) / 1000.0f;
+      }
+    }
+  }
+
+  // ---- DISKS ----
+  host.disk_count = 0;
+  if (root["disks"].is<JsonArrayConst>()) {
+    JsonArrayConst arr = root["disks"].as<JsonArrayConst>();
+    const size_t CAP = sizeof(host.disks) / sizeof(host.disks[0]);
+    for (JsonObjectConst d : arr) {
+      if (host.disk_count >= CAP) break;
+      auto &dst = host.disks[host.disk_count++];
+
+      const char* nm = d["name"] | "";
+      safeCopy(dst.name, sizeof(dst.name), nm);
+
+      const char* st = d["state"] | "";
+      dst.active = stateIsActive(st);
+
+      // Only trust/show temperature if disk is active.
+      // For idle/standby we store a sentinel so the UI prints “-”
+      if (dst.active) {
+        int8_t tC = extractDiskTempC(d);
+        if (d["temp_C"].isNull() && d["temp_c"].isNull() && d["temperature_C"].isNull()) {
+          // Host didn’t send a temp even though active → keep sentinel
+          dst.temp_c = -127;
+        } else {
+          dst.temp_c = tC;
+        }
+      } else {
+        dst.temp_c = -127; // sentinel → UI prints "-"
       }
     }
   }
