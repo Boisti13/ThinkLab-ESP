@@ -12,6 +12,10 @@
 #include "modules/fan2_tach.h"
 #endif
 
+#if USE_DALLAS
+  #include "modules/dallas.h"   // provides dallasGetTempC() or similar
+#endif
+
 void PageDebug::render(Epd_t &d, const HostState &host, const UiState &ui)
 {
   d.firstPage();
@@ -115,6 +119,19 @@ void PageDebug::render(Epd_t &d, const HostState &host, const UiState &ui)
   d.setCursor(labelX, y);
   d.print(F("FanAct"));
   ui::printRight(d, valueR, y, host.fan_active ? String("ON") : String("OFF"));
+  y += LINE_H;
+#endif
+
+// Dallas / Case temperature (selectable)
+#if USE_DALLAS && DBG_SHOW_DALLAS
+  d.setCursor(labelX, y);
+  d.print(F("Case:"));
+  float tC = host.local_temp_c;  
+  if (isnan(tC)) {
+    ui::printRight(d, valueR, y, String("—"));
+  } else {
+    ui::printRight(d, valueR, y, String(tC, 1) + "°C");
+  }
   y += LINE_H;
 #endif
 

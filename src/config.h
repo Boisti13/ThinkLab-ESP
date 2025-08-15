@@ -76,7 +76,7 @@
 
 
 // Timings (ms)
-#define POLL_INTERVAL_MS 60000
+#define POLL_INTERVAL_MS 120000
 #define DISPLAY_INTERVAL_MS 5000
 #define PAGE_DWELL_MS 5000
 #define DEBOUNCE_MS 30
@@ -143,31 +143,7 @@
 #endif
 
 // ===================== Experimental ===========================
-#ifndef USE_EXPERIMENTAL
-#define USE_EXPERIMENTAL 1 // 0 => compile out all experiments
-#endif
 
-// Fixed PWM test for Fan 1 (applied once at boot if sweep is OFF)
-#ifndef EXP_TEST_FAN1_PWM
-#define EXP_TEST_FAN1_PWM 0
-#endif
-#ifndef FAN1_TEST_PWM_PCT
-#define FAN1_TEST_PWM_PCT 60 // 0..100
-#endif
-
-// Fan 1 PWM sweep test (triangle) — overrides fixed test while enabled
-#ifndef EXP_TEST_FAN1_SWEEP
-#define EXP_TEST_FAN1_SWEEP 1
-#endif
-#ifndef FAN1_SWEEP_MIN_PCT
-#define FAN1_SWEEP_MIN_PCT 20
-#endif
-#ifndef FAN1_SWEEP_MAX_PCT
-#define FAN1_SWEEP_MAX_PCT 100
-#endif
-#ifndef FAN1_SWEEP_PERIOD_MS
-#define FAN1_SWEEP_PERIOD_MS 30000
-#endif
 
 // ==== Fan control (Dallas-only) ====
 #ifndef USE_FANCTRL
@@ -256,4 +232,8 @@
 #endif
 #ifndef DBG_SHOW_FAN_ACT
 #define DBG_SHOW_FAN_ACT 1
+#endif
+
+#ifndef DBG_SHOW_DALLAS
+  #define DBG_SHOW_DALLAS 1
 #endif

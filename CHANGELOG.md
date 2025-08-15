@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.9] - 2025-08-15
+### Added
+- **Fan controller hysteresis & dwell knobs**:
+  - `FAN_OFF_BELOW_PCT` (default **8**) – strictly below this → **0% (OFF)**
+  - `FAN_ON_ABOVE_PCT` (default **12**) – must reach this to turn **ON** from OFF
+  - `FAN_MIN_ON_MS` / `FAN_MIN_OFF_MS` (default **4000 ms**) – minimum dwell to prevent flapping
+
+### Changed
+- **Fan controller (`fanctrl`)**:
+  - Simplified, predictable behavior:
+    - **OFF below 32 °C**, **8% at 32 °C** (spin‑guarantee), aggressive ramp **≥ 40 °C**, **100% at 55 °C** (via `FC_PT*_C/P` flags).
+  - Stability: gentle **rate limit** (`FAN_RATE_PCT_PER_S`) and **EMA smoothing** (`FAN_ALPHA_Q8`).
+  - Start reliability: **one‑shot 250 ms @ 100%** start‑kick on OFF→ON.
+  - Flap‑free control: **hysteresis + dwell**; while ON, duty never drops below `FAN_OFF_BELOW_PCT`.
+  - Uses existing `fan1PwmSetPercent(...)` and publishes `fan_duty_cmd`, `fan_duty_filt`, `fan_active` for UI.
+
+- **Debug page**:
+  - Fan telemetry lines (`FanCmd`, `FanOut`, `FanAct`) aligned with existing layout using `labelX` / `valueR`.
+
 ## [0.1.8] - 2025-08-15
 ### Changed
 - **Overview page**:
