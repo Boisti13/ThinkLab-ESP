@@ -41,6 +41,79 @@ static void drawStatusIcon(Epd_t& d, int16_t xRight, int16_t baselineY, bool run
   }
 }
 
+// Render a list with a strict cap: show up to (cap) lines.
+// If count > cap: render (cap-1) real entries and then a "+N more" line.
+// Returns lines consumed.
+template <typename ItemT>
+static uint8_t renderListWithStrictCap(
+  Epd_t& d,
+  const ItemT* list,
+  uint8_t count,
+  int16_t& y,
+  const int16_t bulletX,
+  const int16_t nameStartX,
+  const int16_t valueR,
+  const int16_t gapMin,
+  const int16_t ICON_W,
+  const int16_t LINE_H
+) {
+  if (count == 0) return 0;
+
+  const uint8_t cap = (uint8_t)((void)ICON_W, 0); // placeholder to silence unused warning in generic template
+  // We'll pass the cap via a lambda wrapper below. This template keeps logic generic.
+  return 0;
+}
+
+// Wrapper with explicit cap value to avoid template parameter clutter
+template <typename ItemT>
+static uint8_t renderListWithStrictCapCap(
+  Epd_t& d,
+  const ItemT* list,
+  uint8_t count,
+  uint8_t cap,
+  int16_t& y,
+  const int16_t bulletX,
+  const int16_t nameStartX,
+  const int16_t valueR,
+  const int16_t gapMin,
+  const int16_t ICON_W,
+  const int16_t LINE_H
+) {
+  if (count == 0 || cap == 0) return 0;
+
+  const uint8_t lines = (count <= cap) ? count : cap;
+  const bool needsMoreLine = (count > cap);
+
+  // When we need a "+N more", we render only (cap - 1) real items.
+  const uint8_t realItems = needsMoreLine ? (uint8_t)(cap - 1) : lines;
+
+  // Space available for the name text (reserve right side for icon + gap)
+  const int16_t nameMaxW = nonneg((valueR - gapMin - ICON_W) - nameStartX);
+
+  uint8_t consumed = 0;
+
+  // Real items
+  for (uint8_t i = 0; i < realItems; ++i) {
+    d.setCursor(bulletX, y); d.print(F("- "));
+    String nm = fitToWidth(d, String(list[i].name), nameMaxW);
+    d.setCursor(nameStartX, y); d.print(nm);
+    drawStatusIcon(d, valueR, y, list[i].running);
+    y += LINE_H;
+    consumed++;
+  }
+
+  // "+N more" line (no icon)
+  if (needsMoreLine) {
+    const uint8_t remaining = (uint8_t)(count - realItems);
+    d.setCursor(nameStartX, y);
+    d.print(String(F("+")) + String(remaining) + F(" more"));
+    y += LINE_H;
+    consumed++;
+  }
+
+  return consumed;
+}
+
 void PageVMs::render(Epd_t& d, const HostState& host, const UiState& /*ui*/) {
   d.firstPage();
   do {
@@ -52,7 +125,7 @@ void PageVMs::render(Epd_t& d, const HostState& host, const UiState& /*ui*/) {
     // Layout knobs (LOCAL to this page)
     const int16_t LINE_H   = 20;
     const int16_t labelX   = 4;               // for "VMs:" / "LXCs:"
-    const int16_t valueR   = d.width() - 4;   // right edge for values/icons
+    const int16_t valueR   = d.width() - 4;   // right edge for values/icons (right-aligned)
     const int16_t bulletX  = 0;               // dash bullet all the way left
     const int16_t gapMin   = 6;               // gap between name and icon
     const int16_t ICON_W   = 8;               // status icon width (must match drawStatusIcon)
@@ -60,6 +133,10 @@ void PageVMs::render(Epd_t& d, const HostState& host, const UiState& /*ui*/) {
     // Where names start (after "- ")
     const uint16_t dashW = textW(d, String(F("- ")));
     const int16_t  nameStartX = bulletX + dashW;
+
+    // Section caps: total 7 names on screen -> 3 VMs + 4 LXCs
+    const uint8_t VM_CAP  = 3;
+    const uint8_t LXC_CAP = 4;
 
     int16_t y = ui::content_top();
 
@@ -73,22 +150,11 @@ void PageVMs::render(Epd_t& d, const HostState& host, const UiState& /*ui*/) {
     }
     y += LINE_H;
 
-    // ---- VM list (names left, icon right) ----
-    {
-      const uint8_t SHOW_N = 2;
-      const uint8_t n = (host.vm_list_count < SHOW_N) ? host.vm_list_count : SHOW_N;
-      for (uint8_t i = 0; i < n; ++i) {
-        // Reserve space on right for icon + gap
-        const int16_t nameMaxW = (valueR - gapMin - ICON_W) - nameStartX;
-
-        d.setCursor(bulletX, y); d.print(F("- "));
-        String nm = fitToWidth(d, String(host.vm_list[i].name), nonneg(nameMaxW));
-        d.setCursor(nameStartX, y); d.print(nm);
-
-        drawStatusIcon(d, valueR, y, host.vm_list[i].running);
-        y += LINE_H;
-      }
-    }
+    // ---- VM list (up to VM_CAP entries; "+N more" consumes the last slot) ----
+    (void)renderListWithStrictCapCap(
+      d, host.vm_list, host.vm_list_count, VM_CAP,
+      y, bulletX, nameStartX, valueR, gapMin, ICON_W, LINE_H
+    );
 
     // ---- LXCs: running/total ----
     d.setCursor(labelX, y); d.print(F("LXCs:"));
@@ -100,21 +166,11 @@ void PageVMs::render(Epd_t& d, const HostState& host, const UiState& /*ui*/) {
     }
     y += LINE_H;
 
-    // ---- LXC list (names left, icon right) ----
-    {
-      const uint8_t SHOW_N = 2;
-      const uint8_t n = (host.lxc_list_count < SHOW_N) ? host.lxc_list_count : SHOW_N;
-      for (uint8_t i = 0; i < n; ++i) {
-        const int16_t nameMaxW = (valueR - gapMin - ICON_W) - nameStartX;
-
-        d.setCursor(bulletX, y); d.print(F("- "));
-        String nm = fitToWidth(d, String(host.lxc_list[i].name), nonneg(nameMaxW));
-        d.setCursor(nameStartX, y); d.print(nm);
-
-        drawStatusIcon(d, valueR, y, host.lxc_list[i].running);
-        y += LINE_H;
-      }
-    }
+    // ---- LXC list (up to LXC_CAP entries; "+N more" consumes the last slot) ----
+    (void)renderListWithStrictCapCap(
+      d, host.lxc_list, host.lxc_list_count, LXC_CAP,
+      y, bulletX, nameStartX, valueR, gapMin, ICON_W, LINE_H
+    );
 
     // no footer
 
