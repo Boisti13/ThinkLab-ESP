@@ -1,5 +1,23 @@
 # Changelog
 
+### 2025-08-26 — Client ESP32 (fw_version=0.2.1)
+
+#### Added
+- Website:
+  - Favicon with transparent background (T red, L black, larger font).
+  - `<title>` alias set to **ThinkLab Dash** for browser tab.
+  - ESP uptime display (`Xd Yh Zm`) in ESP32 card.
+  - Proxmox uptime display (`Xd Yh Zm`) in Proxmox card.
+  - Proxmox disk overview showing each disk as active/idle square.
+  - Disk legend row explaining icons (■ active / □ idle).
+
+#### Changed
+- Website layout polished for consistency with e-ink Overview/Disk pages.
+- Minor CSS cleanup for disk icons and alignment.
+
+#### Fixed
+- Unified uptime formatting (days, hours, minutes) across ESP and host cards.
+
 ## [0.2.0] - 2025-08-26
 #### Added
 - **Wi-Fi module**
