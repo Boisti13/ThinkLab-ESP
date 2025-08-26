@@ -16,6 +16,10 @@
   #include "modules/dallas.h"   // provides dallasGetTempC() or similar
 #endif
 
+#if USE_WIFI
+  #include <WiFi.h>
+#endif
+
 void PageDebug::render(Epd_t &d, const HostState &host, const UiState &ui)
 {
   d.firstPage();
@@ -119,6 +123,35 @@ void PageDebug::render(Epd_t &d, const HostState &host, const UiState &ui)
   d.setCursor(labelX, y);
   d.print(F("FanAct"));
   ui::printRight(d, valueR, y, host.fan_active ? String("ON") : String("OFF"));
+  y += LINE_H;
+#endif
+
+// Wi‑Fi status + IP (single line): shows local IP if connected, otherwise "OFF"
+#if USE_WIFI && DBG_SHOW_WIFI
+  d.setCursor(labelX, y);
+  d.print(F("W:"));
+  String wifiStr;
+  if (WiFi.isConnected()) {                 // ESP32 Arduino core helper
+    IPAddress ip = WiFi.localIP();
+    wifiStr = ip.toString();                // e.g., "192.168.1.42"
+  } else {
+    wifiStr = F("OFF");
+  }
+  ui::printRight(d, valueR, y, wifiStr);
+  y += LINE_H;
+#endif
+
+// Wi-Fi RSSI (signal strength in dBm)
+#if USE_WIFI && DBG_SHOW_WIFI_RSSI
+  d.setCursor(labelX, y);
+  d.print(F("RSSI:"));
+  String rssiStr;
+  if (WiFi.isConnected()) {
+    rssiStr = String(WiFi.RSSI()) + " dBm";
+  } else {
+    rssiStr = F("—");
+  }
+  ui::printRight(d, valueR, y, rssiStr);
   y += LINE_H;
 #endif
 

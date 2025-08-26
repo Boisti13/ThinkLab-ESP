@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.2.0] - 2025-08-26
+#### Added
+- **Wi-Fi module**
+  - Automatic connection to configured SSID.
+  - Connection watchdog: if DNS not resolvable, Wi-Fi is disabled, waits 30 s, then retries.
+  - Footer icon shows live RSSI as 0–4 bars, consistent thresholds (-55, -65, -75, -85 dBm).
+
+- **OTA (Over-the-Air updates)**
+  - ArduinoOTA integrated for remote firmware upload.
+  - Protects against double init, stable across serial monitor reconnects.
+  - Debug serial prints removed (silent by default).
+
+- **Minimal Webserver**
+  - Async HTTP server at `http://<esp_ip>/`.
+  - Serves a status page with current Wi-Fi info and basic hostmon data.
+  - Placeholder for future JSON API endpoints.
+
+#### Changed
+- Refactored Wi-Fi reconnect handling to avoid crashes when serial monitor disconnects/reconnects.
+- Adjusted Wi-Fi RSSI symbol placement (-5 px X, +4 px Y offset).
+
 ## [0.1.9] - 2025-08-15
 ### Added
 - **Fan controller hysteresis & dwell knobs**:

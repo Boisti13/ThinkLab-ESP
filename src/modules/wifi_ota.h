@@ -1,9 +1,5 @@
 #pragma once
-#include "config.h"
-#if USE_WIFI
-class WifiOta {
-public:
-  void begin();
-  void tick();
-};
-#endif
+#include <Arduino.h>
+
+void wifiOtaSetup();    // call once from setup()
+void wifiOtaLoop();     // call each loop

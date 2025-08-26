@@ -3,6 +3,10 @@
 #include "state.h"
 #include <Fonts/FreeMono9pt7b.h>
 
+#if USE_WIFI
+#include <WiFi.h>
+#endif
+
 // format kbps → "850 kbps" or "1.2 Mbps"
 static String fmtRate(float kbps)
 {
@@ -76,6 +80,27 @@ void PageNetwork::render(Epd_t &d, const HostState &host, const UiState & /*ui*/
       ui::printRight(d, valueR, y, fmtRate(host.net_tx_kbps));
     }
 
+    // Wi‑Fi status + IP (single line): shows local IP if connected, otherwise "OFF"
+#if USE_WIFI
+    // Draw Wi-Fi icon instead of "W:"
+    int bars = 0;
+    if (WiFi.isConnected()) {
+      bars = ui::rssi_to_bars(WiFi.RSSI());
+    }
+    // icon center: ~8 px right of labelX, baseline aligned with text
+    ui::wifi_icon(d, labelX + 15, y, bars);
+
+    // Right-aligned value: IP address or OFF
+    String wifiStr;
+    if (WiFi.isConnected()) {
+      IPAddress ip = WiFi.localIP();
+      wifiStr = ip.toString(); // e.g., "192.168.1.42"
+    } else {
+      wifiStr = F("OFF");
+    }
+    ui::printRight(d, valueR, y, wifiStr);
+    y += LINE_H;
+#endif
     // no footer
 
   } while (d.nextPage());

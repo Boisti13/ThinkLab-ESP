@@ -50,7 +50,7 @@
 #define TOUCH_LONG_MS 900 // long-press threshold
 #endif
 #ifndef TOUCH_DBL_MS
-#define TOUCH_DBL_MS 350 // double-tap window
+#define TOUCH_DBL_MS 500 // double-tap window (350)
 #endif
 #ifndef TOUCH_ADVANCE_ARM_MS
 #define TOUCH_ADVANCE_ARM_MS 20000 // 20s: second press advances page
@@ -67,12 +67,12 @@
 #endif
 
 // Silence any debug in libs that rely on DEBUG/GxEPD2_DEBUG
-#ifdef DEBUG
-#undef DEBUG
-#endif
-#ifdef GxEPD2_DEBUG
-#undef GxEPD2_DEBUG
-#endif
+//#ifdef DEBUG
+//#undef DEBUG
+//#endif
+//#ifdef GxEPD2_DEBUG
+//#undef GxEPD2_DEBUG
+//#endif
 
 
 // Timings (ms)
@@ -236,4 +236,12 @@
 
 #ifndef DBG_SHOW_DALLAS
   #define DBG_SHOW_DALLAS 1
+#endif
+
+#ifndef DBG_SHOW_WIFI
+  #define DBG_SHOW_WIFI 1
+#endif
+
+#ifndef DBG_SHOW_WIFI_RSSI
+  #define DBG_SHOW_WIFI_RSSI 1
 #endif

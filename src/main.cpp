@@ -10,9 +10,12 @@
 #include "serial_client.h"
 #include "touch.h"
 
+// Modules 
 #if USE_WIFI
-#include "modules/wifi_ota.h"
+  #include "modules/wifi_ota.h"
+  //static WifiOta WIFI;
 #endif
+
 #if USE_DALLAS
 #include "modules/dallas.h"
 #endif
@@ -49,7 +52,7 @@ SerialClient g_serial;
 TouchInput g_touch;
 
 #if USE_WIFI
-WifiOta g_wifi;
+//WifiOta g_wifi;
 #endif
 #if USE_DALLAS
 DallasProbe g_dallas;
@@ -132,6 +135,9 @@ static void splash()
 // ======================= setup =======================
 void setup()
 {
+  #if USE_WIFI
+  wifiOtaSetup();
+#endif
   // USB CDC (no debug prints — Serial is for host protocol)
   Serial.setRxBufferSize(8192);
   Serial.begin(115200);
@@ -140,9 +146,8 @@ void setup()
   g_disp.begin();  // init EPD (rotation inside DM)
   g_touch.begin(); // button on TOUCH_PIN (safe if not connected)
 
-#if USE_WIFI
-  g_wifi.begin();
-#endif
+
+
 #if USE_DALLAS
   g_dallas.begin();
 #endif
@@ -181,20 +186,23 @@ void setup()
 // ======================= loop =======================
 void loop()
 {
+  #if USE_WIFI
+  // Keep OTA responsive; cheap call, safe when not connected
+  wifiOtaLoop();
+#endif
   // --- Host serial client (read, parse, poll GET interval)
   g_serial.tick(g_host, g_ui);
 
   // Leave splash automatically once first valid data arrives (Option B)
-  if (!bootCleared && g_ui.firstDataReady)
+  if (!bootCleared) // && g_ui.firstDataReady
   {
     bootCleared = true;
     lastDisplayMs = millis(); // start auto-rotation timer now
     renderNow();              // show first real page
   }
 
-#if USE_WIFI
-  g_wifi.tick();
-#endif
+
+
 #if USE_DALLAS
   g_dallas.tick();
   g_host.local_temp_c = g_dallas.lastC();

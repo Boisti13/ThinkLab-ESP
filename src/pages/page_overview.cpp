@@ -2,6 +2,7 @@
 #include "ui_theme.h"
 #include "state.h"
 #include "config.h"
+#include <WiFi.h> 
 #include <Fonts/FreeMono9pt7b.h>
 
 void PageOverview::render(Epd_t &d, const HostState &host, const UiState &ui)
@@ -105,5 +106,36 @@ void PageOverview::render(Epd_t &d, const HostState &host, const UiState &ui)
     d.print(ui.mode == MODE_TOUCH ? F("TOUCH") : F("AUTO"));
     d.print(F("]"));
 
+    d.setCursor(4, d.height() - 8);
+d.print(F("["));
+d.print(ui.mode == MODE_TOUCH ? F("TOUCH") : F("AUTO"));
+d.print(F("]"));
+
+// Draw WiFi RSSI symbol at bottom-right
+int16_t rssi = WiFi.RSSI();  // returns dBm
+int bars = 0;
+if (rssi > -55)      bars = 4; // excellent
+else if (rssi > -65) bars = 3; // good
+else if (rssi > -75) bars = 2; // fair
+else if (rssi > -85) bars = 1; // weak
+else                 bars = 0; // none
+
+int16_t bx = d.width() - 28;   // move further left (wider bars)
+int16_t by = d.height() - 5;   // baseline
+
+const int barWidth = 4;        // wider bars
+const int spacing  = 3;        // horizontal spacing between bars
+
+for (int i = 0; i < 4; i++) {
+  int h = (i + 1) * 2 + 4; // bar height + 4px
+  int x = bx + i * (barWidth + spacing);
+  if (i < bars) {
+    d.fillRect(x, by - h, barWidth, h, GxEPD_BLACK);
+  } else {
+    d.drawRect(x, by - h, barWidth, h, GxEPD_BLACK);
+  }
+}
+
   } while (d.nextPage());
 }
+
