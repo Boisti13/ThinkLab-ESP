@@ -132,6 +132,29 @@ static void splash()
   } while (d.nextPage());
 }
 
+
+extern "C" void uiTriggerPageUpdate(void)
+{
+  // Mirror the "commit pending single-tap" branch from loop()
+  if (!g_ui.inDebugMode)
+  {
+    if (millis() > g_ui.advanceArmUntilMs)
+    {
+      // First tap: refresh current page & arm the advance window
+      renderNow();
+      g_ui.advanceArmUntilMs = millis() + TOUCH_ADVANCE_ARM_MS; // e.g., 20s
+    }
+    else
+    {
+      // Second tap inside the advance window: advance page & disarm
+      uint8_t n = g_disp.pageCount(g_ui);
+      g_ui.currentPage = (n == 0) ? 0 : (g_ui.currentPage + 1) % n;
+      renderNow();
+      g_ui.advanceArmUntilMs = 0;
+    }
+  }
+}
+
 // ======================= setup =======================
 void setup()
 {

@@ -1,6 +1,23 @@
 # Changelog
 
-### 2025-08-26 — Client ESP32 (fw_version=0.2.1)
+## [0.2.2] - 2025-08-29
+
+#### Added
+- Web UI:
+  - **Update Page** button that mirrors a single tap (re-renders current page and arms advance window).
+  - **Next Page** button to advance to the next normal page and redraw immediately.
+  - Endpoints: **`/api/ui/page/update`** and **`/api/ui/page/next`**.
+  - Modern button styling utilities (`.btn`, `.btn-ghost`).
+
+#### Changed
+- **Exit Debug Page** now cleanly leaves Debug mode and **immediately renders** the normal page (no simulated double-tap).
+- All action buttons now use the **`btn btn-ghost`** style.
+- Visibility: **Update Page** and **Next Page** are shown only in **TOUCH** mode and when **not** in Debug.
+
+#### Fixed
+- Eliminated blank page caused by an unclosed `<style>` / improperly concatenated raw CSS blocks.
+
+## [0.2.1] - 2025-08-26
 
 #### Added
 - Website:
