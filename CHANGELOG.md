@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.3] - 2025-09-05
+
+#### Added
+- Web UI:
+  - ESP32 card now shows **Case temperature (Dallas sensor)**, same source as E-Ink Debug page.
+  - `/status.json` now exposes `"case_c"` (null if unavailable).
+
+#### Changed
+- All HTML pages now sent with explicit `UTF-8` charset to ensure correct rendering.
+- Degree symbol is encoded as `&deg;C` to avoid garbled characters (e.g. “Â°C”).
+
+#### Fixed
+- Temperature display on the web dashboard no longer shows stray “Â” before the degree symbol.
+
 ## [0.2.2] - 2025-08-29
 
 #### Added

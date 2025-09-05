@@ -9,7 +9,7 @@ static constexpr size_t IFNAME_LEN   = 16;
 static constexpr size_t IPV4_LEN     = 16; // "255.255.255.255"
 static constexpr size_t STATUS_LEN   = 20;
 
-static constexpr uint8_t MAX_DISKS   = 6;
+static constexpr uint8_t MAX_DISKS   = 8;
 static constexpr uint8_t MAX_GUESTS  = 6;
 
 // ------------ helpers used by pages ------------

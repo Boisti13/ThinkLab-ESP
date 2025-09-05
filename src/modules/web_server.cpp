@@ -126,8 +126,9 @@ static void handleRoot(){
     const int        bars   = rssiToBars((int)rssi);
 
     String html;
-    html.reserve(6000);
+    html.reserve(6400);
     html += "<!doctype html>"
+            "<meta charset='utf-8'>"                         
             "<meta name=viewport content='width=device-width,initial-scale=1'>"
             "<title>" + String(WEB_TITLE) + "</title>"
             "<link rel='icon' type='image/svg+xml' href='/favicon.svg'>"
@@ -193,6 +194,18 @@ static void handleRoot(){
     }
     html += "</div></div>";
     html += "<div class=row><div>SSID</div><div class=tag>" + (linkUp ? WiFi.SSID() : "-") + "</div></div>";
+
+    // NEW: Case temperature (Dallas)
+    {
+        const float tC = g_host.local_temp_c;
+        html += "<div class=row><div>Case Temp</div><div class=tag>";
+        if (isnan(tC)) {
+            html += "—"; // em dash when unknown
+        } else {
+            html += String(tC, 1) + "&deg;C";
+        }
+        html += "</div></div>";
+    }
 
     // ESP uptime (Xd Yh Zm)
     {
@@ -322,20 +335,22 @@ uiFetchStatus();
     html += "</div>";
 
     html += "<script>setTimeout(()=>location.reload(),5000)</script>";
-    server.send(200, "text/html", html);
+    server.send(200, "text/html; charset=utf-8", html);
 }
 
 static void handleStatusJson(){
     if (!checkAuth()) return;
     const bool linkUp = WiFi.isConnected();
     String out;
-    out.reserve(256);
+    out.reserve(320);
     out += "{";
     out += "\"hostname\":\"" + String(HOSTNAME) + "\",";
     out += "\"ip\":\"" + (linkUp ? WiFi.localIP().toString() : String("")) + "\",";
     out += "\"ssid\":\"" + String(linkUp ? WiFi.SSID() : "") + "\",";
     out += "\"rssi_dbm\":" + String(linkUp ? WiFi.RSSI() : -127) + ",";
     out += "\"esp_uptime_sec\":" + String(millis() / 1000UL) + ",";
+    // NEW: expose Dallas / case temperature too
+    out += "\"case_c\":"; out += (isnan(g_host.local_temp_c) ? String("null") : String(g_host.local_temp_c, 1)); out += ",";
     out += "\"build\":\"" + String(BUILD_VERSION) + "\"";
     out += "}";
     server.send(200, "application/json", out);
@@ -351,7 +366,7 @@ static void handleUpdatePage(){
             "<input type='file' name='firmware' accept='.bin' required>"
             "<button type='submit'>Update</button>"
             "</form>";
-    server.send(200, "text/html", html);
+    server.send(200, "text/html; charset=utf-8", html);
 }
 
 static void handleUpdateUpload(){
