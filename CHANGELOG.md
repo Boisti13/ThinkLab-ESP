@@ -4,6 +4,11 @@ All notable changes, newest first. Each version is tagged `vX.Y.Z` on `main`.
 
 ## Unreleased
 
+## v0.3.3 — 2026-11-15
+
+### Added
+- The mDNS announcements (`_arduino._tcp`, `_http._tcp`) carry the board's MAC as TXT record `mac`, so Home Assistant recognises an already configured board at discovery instead of offering it again.
+
 ### Changed
 - The Home Assistant REST package (`homeassistant/`) is gone: use the integration [ha-thinklab-display](https://github.com/Boisti13/ha-thinklab-display) instead.
 

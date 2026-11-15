@@ -88,6 +88,10 @@ static void startMDNS() {
   if (MDNS.begin(HOSTNAME)) {
     MDNS.addService("http", "tcp", 80);
     MDNS.enableArduino(3232, true);   // lets PlatformIO/Arduino IDE find the board for OTA
+    // The MAC in both announcements lets Home Assistant tell boards apart
+    // (its integration uses it as the device ID) before anyone logs in.
+    MDNS.addServiceTxt("arduino", "tcp", "mac", WiFi.macAddress());
+    MDNS.addServiceTxt("http", "tcp", "mac", WiFi.macAddress());
   }
 }
 static void stopMDNS() {
