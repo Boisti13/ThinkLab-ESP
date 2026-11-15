@@ -10,10 +10,11 @@
 #include "serial_client.h"
 #include "touch.h"
 
-// Modules 
+// Modules
 #if USE_WIFI
-  #include "modules/wifi_ota.h"
-  //static WifiOta WIFI;
+#include "modules/wifi_ota.h"
+// static WifiOta WIFI;
+#include <WiFi.h>
 #endif
 
 #if USE_DALLAS
@@ -52,7 +53,7 @@ SerialClient g_serial;
 TouchInput g_touch;
 
 #if USE_WIFI
-//WifiOta g_wifi;
+// WifiOta g_wifi;
 #endif
 #if USE_DALLAS
 DallasProbe g_dallas;
@@ -132,7 +133,6 @@ static void splash()
   } while (d.nextPage());
 }
 
-
 extern "C" void uiTriggerPageUpdate(void)
 {
   // Mirror the "commit pending single-tap" branch from loop()
@@ -158,7 +158,7 @@ extern "C" void uiTriggerPageUpdate(void)
 // ======================= setup =======================
 void setup()
 {
-  #if USE_WIFI
+#if USE_WIFI
   wifiOtaSetup();
 #endif
   // USB CDC (no debug prints — Serial is for host protocol)
@@ -168,8 +168,6 @@ void setup()
 
   g_disp.begin();  // init EPD (rotation inside DM)
   g_touch.begin(); // button on TOUCH_PIN (safe if not connected)
-
-
 
 #if USE_DALLAS
   g_dallas.begin();
@@ -209,7 +207,22 @@ void setup()
 // ======================= loop =======================
 void loop()
 {
-  #if USE_WIFI
+#if USE_WIFI
+  static uint32_t lastWifiCheck = 0;
+
+  // Periodically ensure Wi-Fi is connected (auto-reconnect)
+  if (millis() - lastWifiCheck > 3000)
+  { // every 3 seconds
+    lastWifiCheck = millis();
+
+    if (WiFi.status() != WL_CONNECTED)
+    {
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_STA);
+      WiFi.begin(WIFI_SSID, WIFI_PASS);
+    }
+  }
+
   // Keep OTA responsive; cheap call, safe when not connected
   wifiOtaLoop();
 #endif
@@ -223,8 +236,6 @@ void loop()
     lastDisplayMs = millis(); // start auto-rotation timer now
     renderNow();              // show first real page
   }
-
-
 
 #if USE_DALLAS
   g_dallas.tick();

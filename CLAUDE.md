@@ -15,12 +15,11 @@ go into both repos together.
   (`claude-setup/homelab.md`, wiki).
 - One branch, `main`; the old feature/release branches on GitHub are
   merged or abandoned — don't build on them.
-- **The board runs firmware newer than this repo** (found 2026-11-15): its
-  web page has a *Cooling* card (fan 25 %/50 %/Auto, `/api/fan/*`), *Reboot
-  ESP* (`/api/esp/reboot`) and an *E-Ink Display* card that are in no
-  branch. Until the owner pushes that source, don't flash a build from
-  here: it would drop those features. Changes made here since then (page
-  fixes, OTA secrets, platform pin) must be merged onto it.
+- **The board's source is here since 2026-11-15**: the build it ran
+  (2025-11-30, fan buttons, reboot) was only on a Windows PC, uncommitted;
+  the owner uploaded it and it was committed on top. `secrets.ini` with the
+  real values is in the dev box clone (git-ignored, mode 600), so real
+  builds work there.
 - **Versions**: the real one is `-DFW_VERSION` in `platformio.ini`'s
   `build_flags` (the default in `config.h` is only a fallback). Bump it
   with every flashed change and add a `CHANGELOG.md` entry;

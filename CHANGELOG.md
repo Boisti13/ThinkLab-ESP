@@ -5,6 +5,7 @@ All notable changes, newest first. Each version is tagged `vX.Y.Z` on `main`.
 ## Unreleased
 
 ### Added
+- Source of the build running on the author's board since 2025-11-30, which had never been committed: **fan buttons** on the web page (25 %, 50 %, back to auto; `/api/fan/status`, `/api/fan/manual/25|50`, `/api/fan/auto`), **Reboot ESP** (`/api/esp/reboot`), the host can restart the board with `{"schema_version":1,"cmd":"reboot"}`, a Wi-Fi check in the main loop every 3 s, and a simpler fan controller (8 % dead zone, start kick on every 0 → on edge, no hysteresis/dwell).
 - Pictures of every e-paper page and of the web page in the README. `tools/render/` draws the pages on a PC from the real page code with made-up data, and takes the web page from a running board with every value replaced.
 
 ### Fixed

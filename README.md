@@ -30,17 +30,15 @@ same and lets you switch pages, drive the case fan and upload new firmware.
   Wi-Fi is only for the web page and updates
 - **Robust link**: brace-framed JSON reader that ignores the board's own log
   lines; *Online/Timeout* on the Status page when the host stops answering
-- **Web page**: status, page and mode buttons, fan control, firmware upload,
-  `status.json`; behind a login
+- **Web page**: status, page and mode buttons, fan control (25 %, 50 %,
+  auto), reboot, firmware upload, `status.json`; behind a login
 - **Case fan**: 4-pin PWM on a temperature curve from the Dallas sensor,
   with a start kick, smoothing and a safe speed if the sensor fails;
   tachometer inputs for two fans
 
 ![Web page](docs/screenshots/web.png)
 
-*The web page as the firmware on the author's board shows it, with made-up
-values. That build is slightly ahead of this repository: the fan buttons
-and* Reboot ESP *aren't pushed yet.*
+*The web page with made-up values.*
 
 ## Hardware
 
