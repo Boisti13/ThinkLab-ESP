@@ -4,6 +4,20 @@ All notable changes, newest first. Each version is tagged `vX.Y.Z` on `main`.
 
 ## Unreleased
 
+## v0.3.4 — 2026-11-15
+
+### Added
+- **Stall protection for both fans** (they share the PWM line): a fan that has turned since boot but reads 0 rpm for 5 s while driven gets a 1 s full-power kick (at most every 10 s). A kick only counts as a fix when the fans keep turning for a minute; after three failed kicks the minimum duty goes up by 2 % (up to 30 %, until the next restart). `status.json`: `fan_stalled`, `fan_stall_kicks`, `fan_min_pct`; the web page shows *STALLED*, the Debug page *STALL*.
+- **Fan 2's speed is published**: `fan2_rpm` in `status.json`, both speeds on the web page and on the Debug page (`RPM: fan1/fan2`). It was measured all along but shown nowhere.
+
+### Changed
+- **Exact fan speeds**: measured from the time between tach pulses (median of the last six), not by counting pulses for half a second. At 200 rpm the old way read 180, 240 or 300; now it reads 193 steadily. Pulses that end within microseconds (PWM switching coupled into the tach line) and pulses after less than half the last period are ignored as noise; at 50 % duty these had shown up to 3600 rpm instead of 1870.
+- Debug page: the fixed *Poll* line is gone to make room.
+
+### Under the hood
+- One `Tach` class (`modules/tach.*`) for both fans; fan 1's PWM and tach were initialised twice at start-up.
+- `tools/fansim` models both fans, including a worn fan that stops below a set duty: it gets kicked six times, the minimum rises from 8 to 12 %, then it keeps turning.
+
 ## v0.3.3 — 2026-11-15
 
 ### Added

@@ -37,7 +37,8 @@ same and lets you switch pages, drive the case fan and upload new firmware.
   auto), reboot, firmware upload, `status.json`; behind a login
 - **Case fan**: 4-pin PWM on a temperature curve from the Dallas sensor,
   with a start kick, smoothing, on/off hysteresis and a safe speed if the
-  sensor fails;
+  sensor fails; both fans' speeds measured exactly, and a stalled fan is
+  kicked again (and the minimum duty raised if it keeps stalling);
   tachometer inputs for two fans; manual 25 %/50 % from the web page ends
   by itself after an hour or at 50 °C
 - **Safe updates**: a new build is kept only once it gets Wi-Fi, otherwise

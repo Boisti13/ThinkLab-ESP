@@ -14,6 +14,7 @@
 #if USE_FAN1
 #include "modules/fan1_pwm.h"
 #include "modules/fan1_tach.h"
+#include "modules/fan2_tach.h"
 #endif
 #if USE_FANCTRL
 #include "modules/fanctrl.h"
@@ -211,6 +212,14 @@ static void handleFanStatus()
     {
         out += String(outPct, 1); // one decimal place
     }
+    int rpm2 = -1;
+#if USE_FAN2_TACH
+    rpm2 = fan2TachGetRPM();
+#endif
+    out += ",\"rpm2\":" + String(rpm2);
+#if USE_FANCTRL
+    out += ",\"stalled\":" + String(fanCtrlStalled() ? "true" : "false");
+#endif
     out += ",\"manual_left_s\":";
 #if USE_FANCTRL
     out += String(fanCtrlManualLeftS());
@@ -534,10 +543,9 @@ async function fanFetchStatus(){
   if (badge){
     const modeStr = j.auto ? 'AUTO' : ('MANUAL ' + j.pct + '%' + (j.manual_left_s ? ' (' + Math.ceil(j.manual_left_s / 60) + ' min left)' : ''));
 
-    let rpmStr = 'RPM —';
-    if (typeof j.rpm === 'number' && j.rpm >= 0){
-      rpmStr = j.rpm + ' RPM';
-    }
+    const r = (v) => (typeof v === 'number' && v >= 0) ? v : '—';
+    let rpmStr = r(j.rpm) + ' / ' + r(j.rpm2) + ' RPM';
+    if (j.stalled) rpmStr += ' (STALLED)';
 
     let outStr = '';
     if (typeof j.out_pct === 'number'){
@@ -697,6 +705,16 @@ static void handleStatusJson()
     out += ",\"fan_manual_left_s\":" + String(manualLeft);
     out += ",\"fan_curve_pct\":" + (isnan(g_host.fan_duty_cmd) ? String("null") : String(g_host.fan_duty_cmd, 1));
     out += ",\"fan_on\":" + String(g_host.fan_active ? "true" : "false");
+    int fan2Rpm = -1;
+#if USE_FAN2_TACH
+    fan2Rpm = fan2TachGetRPM();
+#endif
+    out += ",\"fan2_rpm\":" + String(fan2Rpm);
+#if USE_FANCTRL
+    out += ",\"fan_min_pct\":" + String(fanCtrlMinDuty());
+    out += ",\"fan_stalled\":" + String(fanCtrlStalled() ? "true" : "false");
+    out += ",\"fan_stall_kicks\":" + String(fanCtrlStallKicks());
+#endif
     out += "}";
     server.sendHeader("Cache-Control", "no-store");
     server.send(200, "application/json", out);

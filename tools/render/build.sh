@@ -19,7 +19,7 @@ fi
 mkdir -p "$build" "$out"
 
 g++ -std=c++17 -O1 -w -DARDUINO=10819 \
-  -DUSE_WIFI=1 -DUSE_DALLAS=1 -DUSE_FAN1=1 -DUSE_FAN2_TACH=1 \
+  -DUSE_WIFI=1 -DUSE_DALLAS=1 -DUSE_FAN1=1 -DUSE_FAN2_TACH=1 -DUSE_FANCTRL=1 $(sed -n "s/^ *-D\(DBG_SHOW_[A-Z0-9_]*=[01]\).*/-D\1/p" "$repo/platformio.ini" | tr "\n" " ") \
   -DFW_VERSION="\"$(sed -n 's/.*-DFW_VERSION=\\"\([^\\]*\)\\".*/\1/p' "$repo/platformio.ini")\"" \
   -I "$here/shim" -I "$repo/src" -I "$gfx" \
   "$here/render.cpp" "$gfx/Adafruit_GFX.cpp" \

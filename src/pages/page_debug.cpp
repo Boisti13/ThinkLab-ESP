@@ -2,6 +2,9 @@
 #include "ui_theme.h"
 #include "state.h"
 #include "config.h"
+#if USE_FANCTRL
+#include "modules/fanctrl.h"
+#endif
 #include <Fonts/FreeMono9pt7b.h>
 
 #if USE_FAN1
@@ -60,11 +63,6 @@ void PageDebug::render(Epd_t &d, const HostState &host, const UiState &ui)
     ui::printRight(d, valueR, y, String(ui.lastJsonLen) + " B");
     y += LINE_H;
 
-    // Poll
-    d.setCursor(labelX, y);
-    d.print(F("Poll:"));
-    ui::printRight(d, valueR, y, String(POLL_INTERVAL_MS / 1000.0f, 1) + "s");
-    y += LINE_H;
 
     // Mode
     d.setCursor(labelX, y);
@@ -85,22 +83,17 @@ void PageDebug::render(Epd_t &d, const HostState &host, const UiState &ui)
   y += LINE_H;
 #endif
 
-#if USE_FAN1 && DBG_SHOW_FAN1_RPM
+#if (USE_FAN1 && DBG_SHOW_FAN1_RPM) || (USE_FAN2_TACH && DBG_SHOW_FAN2_RPM)
+  // Both fans on one line: "RPM: fan1/fan2"
   d.setCursor(labelX, y);
-  d.print(F("Fan1 RPM:"));
+  d.print(F("RPM:"));
   {
-    int rpm1 = fan1TachGetRPM();
-    ui::printRight(d, valueR, y, rpm1 < 0 ? String("—") : String(rpm1));
-  }
-  y += LINE_H;
+    auto rpmStr = [](int r) { return r < 0 ? String("-") : String(r); };
+    String v = rpmStr(fan1TachGetRPM());
+#if USE_FAN2_TACH
+    v += "/" + rpmStr(fan2TachGetRPM());
 #endif
-
-#if USE_FAN2_TACH && DBG_SHOW_FAN2_RPM
-  d.setCursor(labelX, y);
-  d.print(F("Fan2 RPM:"));
-  {
-    int rpm2 = fan2TachGetRPM();
-    ui::printRight(d, valueR, y, rpm2 < 0 ? String("—") : String(rpm2));
+    ui::printRight(d, valueR, y, v);
   }
   y += LINE_H;
 #endif
@@ -122,7 +115,11 @@ void PageDebug::render(Epd_t &d, const HostState &host, const UiState &ui)
 #if DBG_SHOW_FAN_BLOCK && DBG_SHOW_FAN_ACT
   d.setCursor(labelX, y);
   d.print(F("FanAct"));
+#if USE_FANCTRL
+  ui::printRight(d, valueR, y, fanCtrlStalled() ? String("STALL") : host.fan_active ? String("ON") : String("OFF"));
+#else
   ui::printRight(d, valueR, y, host.fan_active ? String("ON") : String("OFF"));
+#endif
   y += LINE_H;
 #endif
 

@@ -176,10 +176,6 @@ void setup()
 #if USE_FAN2_TACH
   fan2TachBegin();
 #endif
-#if USE_FAN1
-  fan1PwmBegin();
-  fan1TachBegin();
-#endif
 
 #if USE_FANCTRL
   fanCtrlBegin();

@@ -19,7 +19,8 @@ uint32_t millis() { return g_now; }
 // Fan readings for the Debug page
 uint8_t fan1PwmGetPercent() { return 25; }
 int fan1TachGetRPM() { return 1180; }
-int fan2TachGetRPM() { return -1; }
+int fan2TachGetRPM() { return 1210; }
+bool fanCtrlStalled() { return false; }
 
 static void copyStr(char *dst, size_t n, const char *src) {
   strncpy(dst, src, n - 1);

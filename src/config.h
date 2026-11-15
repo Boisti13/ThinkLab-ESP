@@ -134,9 +134,6 @@
 #ifndef FAN1_PPR
 #define FAN1_PPR 2 // pulses per revolution
 #endif
-#ifndef FAN1_TACH_WIN_MS
-#define FAN1_TACH_WIN_MS 500 // measurement window
-#endif
 #ifndef FAN1_TACH_TIMEOUT_MS
 #define FAN1_TACH_TIMEOUT_MS 2000 // no pulses → 0 RPM
 #endif
@@ -153,9 +150,6 @@
 #endif
 #ifndef FAN2_PPR
 #define FAN2_PPR 2
-#endif
-#ifndef FAN2_TACH_WIN_MS
-#define FAN2_TACH_WIN_MS 500
 #endif
 #ifndef FAN2_TACH_TIMEOUT_MS
 #define FAN2_TACH_TIMEOUT_MS 2000
@@ -207,6 +201,28 @@
 #endif
 // Manual duty from the web page ends after this long, or as soon as the case
 // reaches FAN_MANUAL_OVERRIDE_C, and the curve takes over again.
+// Stall protection (both fans on the one PWM line)
+#ifndef FAN_STALL_MS
+#define FAN_STALL_MS 5000UL         // 0 rpm this long while driven = stalled
+#endif
+#ifndef FAN_STALL_RETRY_MS
+#define FAN_STALL_RETRY_MS 10000UL  // at most one stall kick per this time
+#endif
+#ifndef FAN_STALL_KICK_MS
+#define FAN_STALL_KICK_MS 1000UL    // full power this long per stall kick
+#endif
+#ifndef FAN_STALL_OK_MS
+#define FAN_STALL_OK_MS 60000UL     // turning this long after a kick = the kick worked
+#endif
+#ifndef FAN_STALL_RAISE_AFTER
+#define FAN_STALL_RAISE_AFTER 3     // failed kicks before the minimum goes up
+#endif
+#ifndef FAN_MIN_DUTY_STEP
+#define FAN_MIN_DUTY_STEP 2
+#endif
+#ifndef FAN_MIN_DUTY_MAX
+#define FAN_MIN_DUTY_MAX 30
+#endif
 #ifndef FAN_MANUAL_MAX_MS
 #define FAN_MANUAL_MAX_MS 3600000UL
 #endif
