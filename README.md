@@ -42,8 +42,8 @@ same and lets you switch pages, drive the case fan and upload new firmware.
   by itself after an hour or at 50 °C
 - **Safe updates**: a new build is kept only once it gets Wi-Fi, otherwise
   the board goes back to the previous one by itself
-- **Home Assistant**: a ready package for case temperature, fan, link and
-  alerts ([below](#home-assistant))
+- **Home Assistant**: its own integration, installed through HACS
+  ([below](#home-assistant))
 
 ![Web page](docs/screenshots/web.png)
 
@@ -98,15 +98,11 @@ own: anyone who knows it can flash the board.
 
 ## Home Assistant
 
-[`homeassistant/thinklab_display.yaml`](homeassistant/thinklab_display.yaml)
-is a package that reads `status.json` every minute: case temperature, fan
-duty and RPM, auto/manual and minutes left, Wi-Fi, uptime, firmware and
-whether the board still gets host data. Scripts set the fan to 25 %, 50 %
-or auto, and three automations send a message when the case stays at
-50 °C, when the fan is driven but doesn't turn, or when the host stops
-answering. Put the login into `secrets.yaml` (`thinklab_display_user`,
-`thinklab_display_pass`), set the board's address and your notify entity,
-and restart Home Assistant the first time (`rest:` loads at start-up).
+Use the integration **[ThinkLab Display](https://github.com/Boisti13/ha-thinklab-display)**
+(HACS custom repository): it finds the board on the network and adds one
+device with case temperature, fan duty and speed, fan mode and duty
+controls, the host link, and buttons for the screen and a restart. Needs
+firmware 0.3.2 or later.
 
 ## Configuration
 
@@ -165,7 +161,6 @@ as "+N more".
 | `src/modules/` | Wi-Fi/OTA, web page, Dallas sensor, fan PWM, tach and control |
 | `tools/render/` | renders the pages on a PC (below) |
 | `docs/screenshots/` | the pictures in this README |
-| `homeassistant/` | Home Assistant package |
 
 ## Development
 

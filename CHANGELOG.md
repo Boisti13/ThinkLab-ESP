@@ -4,6 +4,9 @@ All notable changes, newest first. Each version is tagged `vX.Y.Z` on `main`.
 
 ## Unreleased
 
+### Changed
+- The Home Assistant REST package (`homeassistant/`) is gone: use the integration [ha-thinklab-display](https://github.com/Boisti13/ha-thinklab-display) instead.
+
 ## v0.3.2 — 2026-11-15
 
 ### Fixed
