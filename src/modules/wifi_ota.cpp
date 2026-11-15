@@ -31,30 +31,26 @@
 static bool     wifiConnected     = false;
 static bool     otaInit           = false;
 
-static uint32_t nextAttemptMs     = 0;
-static uint8_t  retryExp          = 0;   // backoff 0..4 (3s..48s)
-static uint8_t  quickKickTries    = 0;
 static uint16_t failStreak        = 0;
-static uint32_t lastDisconnectMs  = 0;
+static uint32_t lastDisconnectMs  = 0;   // when the link last went down
+static uint32_t lastResetMs       = 0;   // last full Wi-Fi restart
 
-// Internet watchdog (DNS-based)
-static uint32_t lastInetCheckMs   = 0;
+// The driver's auto-reconnect handles normal drops. Only if the link stays
+// down this long is Wi-Fi restarted from scratch (and then at most this often).
+#ifndef WIFI_RESET_AFTER_MS
+  #define WIFI_RESET_AFTER_MS 60000UL
+#endif
 
 // Upload state (prevents mid-upload Wi-Fi resets & defers reboot)
 static volatile bool inUpload      = false;
 static bool          pendingReboot = false;
-
-// ---- small helpers ----------------------------------------------------------
-static bool checkInternetSimple() {
-  IPAddress addr;
-  return WiFi.hostByName("google.com", addr);
-}
 
 // ---- mDNS + ArduinoOTA ------------------------------------------------------
 static void startMDNS() {
   MDNS.end();
   if (MDNS.begin(HOSTNAME)) {
     MDNS.addService("http", "tcp", 80);
+    MDNS.enableArduino(3232, true);   // lets PlatformIO/Arduino IDE find the board for OTA
   }
 }
 static void stopMDNS() {
@@ -67,6 +63,7 @@ static void ensureArduinoOTA() {
   ArduinoOTA.setHostname(HOSTNAME);
   ArduinoOTA.setPassword(WEB_PASS);
   ArduinoOTA.setPort(3232);
+  ArduinoOTA.setMdnsEnabled(false);  // startMDNS() owns mDNS
 
   ArduinoOTA
     .onStart([]() {
@@ -91,18 +88,12 @@ static void ensureArduinoOTA() {
 
 static void stopArduinoOTA() {
   if (!otaInit) return;
-  // no explicit end(); otaInit gates handle() calls
+  // end() closes the UDP socket, so the next begin() binds a fresh one
+  ArduinoOTA.end();
   otaInit = false;
 }
 
-// ---- backoff & recovery helpers --------------------------------------------
-static void scheduleNextAttempt(uint32_t baseMs = 3000UL) {
-  uint32_t delayMs = baseMs << (retryExp <= 4 ? retryExp : 4); // 3s..48s
-  if (delayMs > 60000UL) delayMs = 60000UL;
-  nextAttemptMs = millis() + delayMs;
-  if (retryExp < 10) retryExp++;
-}
-
+// ---- connect / recovery -----------------------------------------------------
 static void wifiBeginFresh() {
   WiFi.mode(WIFI_STA);
   WiFi.persistent(false);
@@ -110,9 +101,8 @@ static void wifiBeginFresh() {
   WiFi.setHostname(HOSTNAME);
   WiFi.setAutoReconnect(true);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-  retryExp = 0;
-  quickKickTries = 0;
-  scheduleNextAttempt(1000); // first check soon
+  lastResetMs = millis();
+  lastDisconnectMs = lastResetMs;   // counts as "down" until GOT_IP
 }
 
 // ---- Wi-Fi events -----------------------------------------------------------
@@ -120,60 +110,35 @@ static void onWiFiEvent(WiFiEvent_t event) {
   switch (event) {
     case ARDUINO_EVENT_WIFI_STA_GOT_IP:
       wifiConnected  = true;
-      retryExp       = 0;
-      quickKickTries = 0;
       failStreak     = 0;
       startMDNS();
       ensureArduinoOTA();
       break;
 
     case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+      // Fires again for every failed attempt; auto-reconnect keeps trying.
+      if (wifiConnected) lastDisconnectMs = millis();
       wifiConnected = false;
       stopArduinoOTA();
-      lastDisconnectMs = millis();
       failStreak++;
-      if (quickKickTries < 3) {
-        esp_wifi_connect();
-        quickKickTries++;
-      }
-      scheduleNextAttempt();
       break;
 
     default: break;
   }
 }
 
-// ---- maintenance (watchdog + DNS connectivity) -----------------------------
+// ---- maintenance --------------------------------------------------------------
+// No internet check: the board only needs the LAN (web page, OTA), and the
+// house has no internet at night by design. Normal drops are handled by the
+// driver's auto-reconnect; a full restart only after WIFI_RESET_AFTER_MS down.
 static void wifiMaintain() {
-  if (inUpload) return; // never tamper during uploads
-
-  // If link is up, periodically verify real connectivity via DNS (30s)
-  if (wifiConnected && (millis() - lastInetCheckMs) > 30000UL) {
-    lastInetCheckMs = millis();
-    if (!checkInternetSimple()) {
-      // DNS unreachable → full Wi-Fi shutdown + delayed restart
-      WiFi.disconnect(true, true);
-      WiFi.mode(WIFI_OFF);
-      wifiConnected = false;
-      stopArduinoOTA();
-      lastDisconnectMs = millis();
-      nextAttemptMs = millis() + 30000UL;
-      retryExp = 0;
-      return;
-    }
-  }
-
-  if (wifiConnected) return;
-
-  // Time for a scheduled reconnect?
-  if ((int32_t)(millis() - nextAttemptMs) >= 0) {
-    WiFi.mode(WIFI_STA);
-    WiFi.persistent(false);
-    WiFi.setSleep(false);
-    WiFi.setHostname(HOSTNAME);
-    WiFi.setAutoReconnect(true);
-    WiFi.begin(WIFI_SSID, WIFI_PASS);
-    scheduleNextAttempt();
+  if (inUpload || wifiConnected) return;
+  const uint32_t now = millis();
+  if (now - lastDisconnectMs >= WIFI_RESET_AFTER_MS && now - lastResetMs >= WIFI_RESET_AFTER_MS) {
+    WiFi.disconnect(true, false);
+    WiFi.mode(WIFI_OFF);
+    delay(100);
+    wifiBeginFresh();
   }
 }
 

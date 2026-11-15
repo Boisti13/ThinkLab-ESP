@@ -208,22 +208,7 @@ void setup()
 void loop()
 {
 #if USE_WIFI
-  static uint32_t lastWifiCheck = 0;
-
-  // Periodically ensure Wi-Fi is connected (auto-reconnect)
-  if (millis() - lastWifiCheck > 3000)
-  { // every 3 seconds
-    lastWifiCheck = millis();
-
-    if (WiFi.status() != WL_CONNECTED)
-    {
-      WiFi.disconnect(true);
-      WiFi.mode(WIFI_STA);
-      WiFi.begin(WIFI_SSID, WIFI_PASS);
-    }
-  }
-
-  // Keep OTA responsive; cheap call, safe when not connected
+  // Wi-Fi reconnects, web server and OTA all live in wifi_ota.cpp
   wifiOtaLoop();
 #endif
   // --- Host serial client (read, parse, poll GET interval)

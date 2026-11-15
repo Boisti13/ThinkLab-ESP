@@ -4,6 +4,17 @@ All notable changes, newest first. Each version is tagged `vX.Y.Z` on `main`.
 
 ## Unreleased
 
+## v0.3.0 — 2026-11-15
+
+### Fixed
+- **Wi-Fi**: one reconnect path instead of two. The main loop restarted Wi-Fi every 3 s while it was down, on top of `wifi_ota.cpp`'s own retries, so any connection slower than 3 s was cut off ("sta is connecting" errors). Now the driver's auto-reconnect handles drops, and Wi-Fi is restarted from scratch only after a minute without a connection.
+- **Wi-Fi**: no more internet check. The board turned Wi-Fi off whenever `google.com` didn't resolve, so the web page and OTA were gone whenever the internet was (it only needs the LAN).
+- **OTA**: ArduinoOTA's socket is closed and reopened properly across reconnects, and the board announces itself for OTA over mDNS again.
+- **Web page**: *Exit Debug Page* shows the normal page at once again (lost in the 2025-11-30 build).
+
+### Changed
+- Firmware version 0.3.0 everywhere (the web page showed *Build v1.0.0*); expects host 1.2.0.
+
 ### Added
 - Source of the build running on the author's board since 2025-11-30, which had never been committed: **fan buttons** on the web page (25 %, 50 %, back to auto; `/api/fan/status`, `/api/fan/manual/25|50`, `/api/fan/auto`), **Reboot ESP** (`/api/esp/reboot`), the host can restart the board with `{"schema_version":1,"cmd":"reboot"}`, a Wi-Fi check in the main loop every 3 s, and a simpler fan controller (8 % dead zone, start kick on every 0 → on edge, no hysteresis/dwell).
 - Pictures of every e-paper page and of the web page in the README. `tools/render/` draws the pages on a PC from the real page code with made-up data, and takes the web page from a running board with every value replaced.

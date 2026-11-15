@@ -158,7 +158,10 @@ static void handleUiHideDebug()
         return;
     g_ui.inDebugMode = false;
     g_ui.lastDebugRefresh = 0;
+    g_ui.tapPending = false;
+    g_ui.advanceArmUntilMs = 0;
     server.send(204);
+    g_disp.renderCurrent(g_host, g_ui);   // back to the normal page at once (after the reply)
 }
 
 // --- Fan control endpoints (use real controller enable/disable) ---
