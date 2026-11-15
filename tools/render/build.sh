@@ -32,6 +32,6 @@ for f in "$build"/eink-*.pbm; do
   name="$(basename "$f" .pbm)"
   # 2x, nearest neighbour, on a pale e-paper grey with a thin frame
   "$magick_cmd" "$f" -scale 200% -fill '#f2f0e8' -opaque white \
-    -bordercolor '#f2f0e8' -border 12 -bordercolor '#9a9a9a' -border 1 "$out/$name.png"
+    -bordercolor '#f2f0e8' -border 12 -bordercolor '#9a9a9a' -border 1 -strip -define png:exclude-chunks=date,time "$out/$name.png"
   echo "$out/$name.png"
 done
