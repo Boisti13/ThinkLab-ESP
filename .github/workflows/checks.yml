@@ -1,0 +1,36 @@
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ hashFiles('platformio.ini') }}
+      - run: pip install platformio
+      # Dummy credentials from the example file; never flash this build.
+      - run: cp secrets.ini.example secrets.ini
+      - run: pio run -e esp32c3-usb
+
+  render:
+    # The e-paper pages compiled for the PC, as in the README's pictures.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+      - run: tools/render/build.sh /tmp/render
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eink-pages
+          path: /tmp/render/*.png

@@ -42,7 +42,9 @@ static void drawStatusIcon(Epd_t& d, int16_t xRight, int16_t baselineY, bool run
 }
 
 // Render a list with a strict cap: show up to (cap) lines.
-// If count > cap: render (cap-1) real entries and then a "+N more" line.
+// If the guest total > cap: render (cap-1) real entries and then a "+N more" line.
+// `count` is how many entries the board kept (at most MAX_GUESTS); `total` is
+// how many the host reported, so "+N more" counts the ones not kept too.
 // Returns lines consumed.
 template <typename ItemT>
 static uint8_t renderListWithStrictCap(
@@ -70,6 +72,7 @@ static uint8_t renderListWithStrictCapCap(
   Epd_t& d,
   const ItemT* list,
   uint8_t count,
+  int32_t total,
   uint8_t cap,
   int16_t& y,
   const int16_t bulletX,
@@ -80,12 +83,13 @@ static uint8_t renderListWithStrictCapCap(
   const int16_t LINE_H
 ) {
   if (count == 0 || cap == 0) return 0;
+  if (total < (int32_t)count) total = count;   // host sent no total
 
-  const uint8_t lines = (count <= cap) ? count : cap;
-  const bool needsMoreLine = (count > cap);
+  const bool needsMoreLine = (total > cap);
 
   // When we need a "+N more", we render only (cap - 1) real items.
-  const uint8_t realItems = needsMoreLine ? (uint8_t)(cap - 1) : lines;
+  uint8_t realItems = needsMoreLine ? (uint8_t)(cap - 1) : (uint8_t)total;
+  if (realItems > count) realItems = count;
 
   // Space available for the name text (reserve right side for icon + gap)
   const int16_t nameMaxW = nonneg((valueR - gapMin - ICON_W) - nameStartX);
@@ -104,7 +108,7 @@ static uint8_t renderListWithStrictCapCap(
 
   // "+N more" line (no icon)
   if (needsMoreLine) {
-    const uint8_t remaining = (uint8_t)(count - realItems);
+    const int32_t remaining = total - realItems;
     d.setCursor(nameStartX, y);
     d.print(String(F("+")) + String(remaining) + F(" more"));
     y += LINE_H;
@@ -152,7 +156,7 @@ void PageVMs::render(Epd_t& d, const HostState& host, const UiState& /*ui*/) {
 
     // ---- VM list (up to VM_CAP entries; "+N more" consumes the last slot) ----
     (void)renderListWithStrictCapCap(
-      d, host.vm_list, host.vm_list_count, VM_CAP,
+      d, host.vm_list, host.vm_list_count, host.vms_total, VM_CAP,
       y, bulletX, nameStartX, valueR, gapMin, ICON_W, LINE_H
     );
 
@@ -168,7 +172,7 @@ void PageVMs::render(Epd_t& d, const HostState& host, const UiState& /*ui*/) {
 
     // ---- LXC list (up to LXC_CAP entries; "+N more" consumes the last slot) ----
     (void)renderListWithStrictCapCap(
-      d, host.lxc_list, host.lxc_list_count, LXC_CAP,
+      d, host.lxc_list, host.lxc_list_count, host.lxcs_total, LXC_CAP,
       y, bulletX, nameStartX, valueR, gapMin, ICON_W, LINE_H
     );
 

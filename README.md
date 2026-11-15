@@ -1,221 +1,171 @@
-# ThinkLab — ESP32 client for hl-hostmon (e-ink dashboard)
+# ThinkLab ESP — e-paper status screen for a Proxmox host
 
-Firmware for ESP32-C3/S3 that connects via **USB CDC** to the `hl-hostmon` host script,
-polls JSON at fixed intervals, and renders a compact dashboard on a **1.54″ e-ink**
-(SSD1681, 200×200) using **GxEPD2**. It supports touch/auto page modes, Dallas (case)
-temperature, optional Wi-Fi/OTA, and leaves room for a future PC fan PWM controller.
+[![Checks](https://github.com/Boisti13/ThinkLab-ESP/actions/workflows/checks.yml/badge.svg)](https://github.com/Boisti13/ThinkLab-ESP/actions/workflows/checks.yml)
+[![Latest tag](https://img.shields.io/github/v/tag/Boisti13/ThinkLab-ESP?sort=semver&label=version)](https://github.com/Boisti13/ThinkLab-ESP/tags)
+[![License: GPL-3.0](https://img.shields.io/github/license/Boisti13/ThinkLab-ESP)](LICENSE)
 
-> **Current firmware:** see `FW_VERSION` (set in `platformio.ini` → `build_flags`)
+Firmware for an ESP32-C3 with a 1.54″ e-paper screen that sits on a
+Proxmox host's USB port and shows how the host is doing: CPU, memory,
+network, which VMs and containers run, and which disks are spinning. It
+asks the host for the numbers over USB; the host side is
+[ThinkLab-Host](https://github.com/Boisti13/ThinkLab-Host) (`hl-hostmon`).
+A Dallas sensor adds the case temperature, and a small web page shows the
+same and lets you switch pages, drive the case fan and upload new firmware.
 
----
+| Status | Network | VMs / LXCs | Disks | Debug |
+|---|---|---|---|---|
+| ![Status page](docs/screenshots/eink-overview.png) | ![Network page](docs/screenshots/eink-network.png) | ![VMs and containers](docs/screenshots/eink-vms.png) | ![Disks](docs/screenshots/eink-disks.png) | ![Debug page](docs/screenshots/eink-debug.png) |
 
-## Features
+*Pictures rendered on a PC from the page code with made-up data
+([how](#pictures)).*
 
-- **USB CDC client**: sends `INFO` once, then `GET` at a configurable interval
-- **Robust JSON framing** (string/escape-aware) + ArduinoJson parsing
-- **Consistent UI** with centered headers and right-aligned values
-- **Pages**: Overview · Network · VMs/LXCs · Disks · Debug
-- **Touch / Auto** page rotation, configurable poll interval
-- **Dallas** 1-Wire temperature (“Case”)
-- **Wi-Fi / OTA** optional (ArduinoOTA from Arduino IDE)
-- **Future**: PC fan PWM on GPIO9 with tacho on GPIO5 (stubbed)
+## Highlights
 
----
+- **Five pages**: Status (IP, CPU, RAM, case temperature, uptime, link),
+  Network (rates, Wi-Fi), VMs/LXCs (running/total and names), Disks
+  (active or asleep), Debug
+- **Touch or auto**: one tap refreshes, a second tap within 20 s turns the
+  page, a long press switches to automatic rotation; double tap opens Debug
+- **No network needed for the screen**: data comes over USB from the host;
+  Wi-Fi is only for the web page and updates
+- **Robust link**: brace-framed JSON reader that ignores the board's own log
+  lines; *Online/Timeout* on the Status page when the host stops answering
+- **Web page**: status, page and mode buttons, fan control, firmware upload,
+  `status.json`; behind a login
+- **Case fan**: 4-pin PWM on a temperature curve from the Dallas sensor,
+  with a start kick, smoothing and a safe speed if the sensor fails;
+  tachometer inputs for two fans
+
+![Web page](docs/screenshots/web.png)
+
+*The web page as the firmware on the author's board shows it, with made-up
+values. That build is slightly ahead of this repository: the fan buttons
+and* Reboot ESP *aren't pushed yet.*
 
 ## Hardware
 
-- **MCU**: ESP32-C3 (native USB) or ESP32-S3 (works similarly)
-- **Display**: 1.54″ e-ink, SSD1681, 200×200  
-  GxEPD2 model: `GxEPD2_154_D67`
-- **Display wiring** (as used in code):
+| Part | Notes |
+|---|---|
+| ESP32-C3 board with native USB | e.g. ESP32-C3 SuperMini or DevKitM-1; the ESP32-S3 works similarly |
+| 1.54″ e-paper, SSD1681, 200×200 | GxEPD2 model `GxEPD2_154_D67` |
+| Touch button | TTP223 or any push button |
+| DS18B20 | case temperature, 4.7 kΩ pull-up |
+| 4-pin PC fan (optional) | PWM through a transistor (open collector), tach with pull-up |
 
-  | Signal | ESP32 pin |
-  |--------|-----------|
-  | CS     | 7         |
-  | DC     | 1         |
-  | RST    | 2         |
-  | BUSY   | 3         |
+| Signal | GPIO |
+|---|---|
+| E-paper CS / DC / RST / BUSY | 7 / 1 / 2 / 3 (SPI on the board's default pins) |
+| Touch | 10 (active high; `TOUCH_ACTIVE_LOW` to flip) |
+| DS18B20 (1-Wire) | 8 |
+| Fan 1 PWM / tach | 9 / 5 |
+| Fan 2 tach | 0 |
 
-  SPI uses the board defaults (no explicit remap needed).
+## Install
 
-- **Touch**: GPIO10 (active-low button or touch input)
-- **Dallas**: 1-Wire pin configurable (see `config.h`)
-- **Fan (planned)**: PWM on GPIO9, Tacho on GPIO5
+1. Install the host service on the Proxmox host:
+   [ThinkLab-Host](https://github.com/Boisti13/ThinkLab-Host#install).
+2. Build and flash the firmware with [PlatformIO](https://platformio.org):
 
----
+   ```bash
+   cp secrets.ini.example secrets.ini   # Wi-Fi, host name, web login, OTA address
+   pio run -e esp32c3-usb -t upload     # over USB
+   ```
 
-## Build (PlatformIO)
+3. Plug the board into the host. It sends `INFO` once and then `GET`
+   every two minutes; the first page appears with the first answer.
 
-This project is organized for **PlatformIO**. Example environment for ESP32-C3 USB:
+| `secrets.ini` key | Used for |
+|---|---|
+| `WIFI_SSID`, `WIFI_PASS` | Wi-Fi |
+| `HOSTNAME` | Wi-Fi/mDNS name |
+| `WEB_USER`, `WEB_PASS` | web page login; `WEB_PASS` is also the ArduinoOTA password |
+| `ota_host`, `ota_pass` | the `esp32c3-ota` environment (`pio run -e esp32c3-ota -t upload`) |
 
-```ini
-; platformio.ini (excerpt)
-[env:esp32c3-usb]
-platform = espressif32
-board = esp32-c3-devkitm-1
-framework = arduino
-
-build_flags =
-  -D FW_VERSION="0.1.4"
-  -D POLL_INTERVAL_MS=2000      ; request interval (ms)
-  -D LINK_TIMEOUT_S=30          ; "Online/Timeout" threshold on Overview (s)
-  -D RX_LINEBUF_BYTES=8192      ; serial framing buffer (one JSON object)
-  -D JSON_DOC_CAP=9216          ; ArduinoJson document capacity
-  ; -D USE_WIFI=1               ; optional Wi-Fi
-  ; -D USE_OTA=1                ; optional OTA (Arduino IDE)
-
-lib_deps =
-  bblanchon/ArduinoJson
-  ZinggJM/GxEPD2
-  adafruit/Adafruit GFX Library
-  milesburton/DallasTemperature
-```
-
-**Build / Upload**
-
-- USB upload (default): `PlatformIO: Upload` (env `esp32c3-usb`)
-- OTA (optional): enable `USE_WIFI` and `USE_OTA`, set credentials in `config.h`,
-  then use **Arduino IDE → Network Ports** to upload.
-
----
+**Updating** later: `pio run -e esp32c3-ota -t upload`, or build and
+upload `.pio/build/esp32c3-usb/firmware.bin` on the web page under
+*Firmware → Upload*. Use a password of your own: anyone who knows it can
+flash the board.
 
 ## Configuration
 
-Most knobs are compile-time flags (see `build_flags`) with `config.h` fallbacks:
+Compile-time settings live in `platformio.ini` (`build_flags`), with
+defaults in `src/config.h`:
 
-- `POLL_INTERVAL_MS` — how often to send `GET` to the host
-- `LINK_TIMEOUT_S` — Overview shows **Online/Timeout** based on last JSON age
-- `RX_LINEBUF_BYTES` — serial framing buffer (increase for larger payloads)
-- `JSON_DOC_CAP` — ArduinoJson capacity (payload-dependent)
-- `USE_WIFI`, `USE_OTA` — enable optional Wi-Fi/OTA
+| Setting | Default | Meaning |
+|---|---|---|
+| `POLL_INTERVAL_MS` | 120000 | how often to ask the host |
+| `LINK_TIMEOUT_S` | 600 | Status shows *Timeout* after this long without an answer |
+| `RX_LINEBUF_BYTES` | 12288 | largest answer the reader takes |
+| `JSON_DOC_CAP` | 9216 | ArduinoJson memory for one answer (needs about 1.5× the answer's size) |
+| `USE_WIFI`, `USE_DALLAS`, `USE_FAN1`, `USE_FAN2_TACH`, `USE_FANCTRL` | on | compile features in or out |
+| `FC_PT1_C` … `FC_PT5_P` | see `platformio.ini` | fan curve: five points of °C → duty % |
+| `DEBUG_IN_ROTATION` | 0 | Debug page in the normal rotation |
 
-Runtime toggles live on the **Debug** page (e.g., debug flag) or via touch/auto mode.
+## Example
 
----
-
-## Pages
-
-All pages share a centered, bold header with an underline and **right-aligned values**.
-
-### Overview
-- **IP** (primary IPv4)
-- **CPU** — percent if available; fallback `L1 <load1>` when `cpu.percent` is `null`
-- **RAM** — `used/total GiB` (binary GiB)
-- **Case** — local Dallas temperature
-- **Uptime** — `Xd Yh`
-- **Link** — `Online (Xs)` or `Timeout (Xs)` based on last JSON age
-
-### Network
-- **IP**
-- **Status** (e.g., `ok`)
-- **Down** / **Up** — rates from `net` totals (`kbps`/`Mbps`), split across two lines
-
-### VMs/LXCs
-- **VMs:** `running/total`
-- **LXCs:** `running/total`
-- Short lists (up to 2 each): `- name` on the left, **status icon** on the right  
-  (filled square = running, outline = stopped). Names are ellipsis-truncated to fit.
-
-### Disks
-- `- name` on the left
-- **Temp** right-aligned (10 px left of the icon), `-` if unknown
-- **Activity icon** on the far right (filled square = active, outline = idle)
-
-### Debug
-- **FW** version
-- **RX age**
-- **OK/ERR**
-- **JSON len** (bytes)
-- **Poll** interval (s)
-- **Mode** (TOUCH/AUTO)
-- **Debug** flag
-
----
-
-## Host protocol (what we expect)
-
-The device writes:
-- `INFO
-` once on boot
-- `GET
-` every `POLL_INTERVAL_MS`
-
-The host replies with a single **JSON object** per line (or with newlines—we frame by braces).
-
-**Fields used** (examples, not exhaustive):
+The board writes `GET` and a newline; the host answers with one line of
+JSON (the full format is in
+[ThinkLab-Host's README](https://github.com/Boisti13/ThinkLab-Host#example)).
+The fields the pages use:
 
 ```json
 {
-  "uptime_s": 181284,
-  "hostname": "bkg-LPS",
-  "cpu": { "percent": null, "load1": 0.49, "load5": 0.17, "load15": 0.11 },
-  "ram": { "total_bytes": 16513433600, "used_bytes": 3926523904 },
-  "filesystems": [{ "mount": "/", "total_bytes": 100861726720, "used_bytes": 14402846720 }],
-  "proxmox": {
-    "vm_running": 1, "vm_total": 4,
-    "lxc_running": 0, "lxc_total": 0,
-    "vms":  [{ "id": 100, "name": "UbuntuLTS24.04", "status": "running" }],
-    "lxcs": [{ "id": 201, "name": "dns", "status": "stopped" }]
-  },
-  "disks": [{ "name": "nvme0n1", "state": "active", "temp_C": null }],
-  "ip": {
-    "primary_ifname": "vmbr2",
-    "primary_ipv4": "192.168.100.103",
-    "gateway_ipv4": "192.168.100.1",
-    "ip_status": "ok"
-  },
-  "net": {
-    "window_s": 1,
-    "total_rx_bps": 83216, "total_tx_bps": 83240
-  }
+  "schema_version": 1,
+  "uptime_s": 795600,
+  "cpu": {"percent": 23.7, "load1": 1.56},
+  "ram": {"total_bytes": 17179869184, "used_bytes": 7730941132},
+  "proxmox": {"vm_running": 1, "vm_total": 2, "lxc_running": 7, "lxc_total": 9,
+              "vms": [{"id": 100, "name": "homeassistant", "status": "running"}],
+              "lxcs": [{"id": 101, "name": "dns", "status": "running"}]},
+  "disks": [{"name": "nvme0n1", "state": "active"}, {"name": "sdb", "state": "standby"}],
+  "ip": {"primary_ipv4": "192.168.1.10/24", "ip_status": "ok"},
+  "net": {"total_rx_bps": 1364680, "total_tx_bps": 977456}
 }
 ```
 
-Notes:
-- `cpu.percent` may be `null`; we fall back to `cpu.load1`.
-- `ram.*_bytes` are parsed as 64-bit and shown as **GiB**.
-- `disks[*].state`: `"active"` / `"active/idle"` → active icon; temp `null` → “-”.
-- `net.total_rx_bps/total_tx_bps` preferred; we also accept `*_Bps` and per-interface fallback.
+Answers with another `schema_version`, or with an `error` field, are
+ignored. The board keeps up to six guests of each kind; the VMs/LXCs page
+shows three VMs and four containers and counts the rest as "+N more".
 
----
+## Layout
+
+| Path | What |
+|---|---|
+| `src/main.cpp` | set-up, loop, touch handling, page switching |
+| `src/serial_client.*` | the USB link: polling, framing, JSON parsing into `HostState` |
+| `src/pages/` | one file per e-paper page |
+| `src/ui_theme.*`, `src/display_manager.*` | header, alignment and Wi-Fi icon helpers; page registry |
+| `src/modules/` | Wi-Fi/OTA, web page, Dallas sensor, fan PWM, tach and control |
+| `tools/render/` | renders the pages on a PC (below) |
+| `docs/screenshots/` | the pictures in this README |
 
 ## Development
 
-- **Structure**: modular `src/pages/*` and `src/modules/*` (Wi-Fi, Dallas, etc.)
-- **UI helpers**: `ui_theme.h` provides `header(...)`, `content_top()`, and `ui::printRight(...)`
-- **No serial spam**: Serial is the host link; all debug info goes to the **Debug** page
-- **Extending pages**: Prefer right-aligned values; measure and fit text to avoid collisions
+```bash
+pio run -e esp32c3-usb              # build (needs a secrets.ini; the example works)
+pio device monitor                  # the board's own log, while no host service holds the port
+```
 
----
+The GitHub checks build the firmware with the example secrets and render
+the pages.
 
-## Troubleshooting
+### Pictures
 
-- **CPU shows “-”**: host sent `"cpu":{"percent":null}` and no loads; add `load1` or compute percent on host.
-- **No Disks**: ensure `disks` array present; temp may be `null` (we show “-”).
-- **Time-outs**: Overview `Link` uses `LINK_TIMEOUT_S`; bump if host polls slower.
-- **JSON too large**: check Debug → **JSON len** vs `RX_LINEBUF_BYTES`. Increase buffers if needed.
+`tools/render/build.sh` compiles the page code for the PC against small
+stand-ins for Arduino, WiFi and GxEPD2 plus the real Adafruit GFX library,
+draws every page with made-up data (`tools/render/render.cpp`) and writes
+`docs/screenshots/eink-*.png`. Needs `g++`, `git` and ImageMagick. Run it
+after every visible change to a page.
 
----
+`tools/render/web-screenshot.js` takes the web page from a running board
+(one `GET`, with `THINKLAB_WEB_USER`/`THINKLAB_WEB_PASS`), replaces every
+real value with demo data, answers the page's API calls itself and saves
+`docs/screenshots/web.png` (Node with Playwright; `CHROMIUM_PATH` to use an
+installed browser).
 
-## Versioning & Changelog
-
-We use semver-ish tags (`vX.Y.Z`). See [`CHANGELOG.md`](CHANGELOG.md) for details.
-
----
+See [CHANGELOG.md](CHANGELOG.md) for what changed.
 
 ## License
 
-This project is licensed under **GPL-3.0-or-later**. See [`LICENSE`](LICENSE) and
-[`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).
-
-Libraries:
-- GxEPD2 (GPL-3.0), Adafruit GFX (BSD), ArduinoJson (MIT), DallasTemperature (MIT).
-
----
-
-## Acknowledgements
-
-- ZinggJM for **GxEPD2**
-- Adafruit for **GFX**
-- Benoît Blanchon for **ArduinoJson**
-- Miles Burton et al. for **DallasTemperature**
+GPL-3.0 ([LICENSE](LICENSE)); the libraries keep their own licences
+([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).

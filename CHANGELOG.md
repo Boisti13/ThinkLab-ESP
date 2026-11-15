@@ -1,45 +1,57 @@
 # Changelog
 
+All notable changes, newest first. Each version is tagged `vX.Y.Z` on `main`.
+
 ## Unreleased
 
-#### Under the hood
+### Added
+- Pictures of every e-paper page and of the web page in the README. `tools/render/` draws the pages on a PC from the real page code with made-up data, and takes the web page from a running board with every value replaced.
+
+### Fixed
+- **Network page**: the Wi-Fi line was drawn over the *Up* rate (the line position didn't move on after it).
+- **VMs/LXCs page**: "+N more" counted only the six guests the board keeps, so with 15 containers it said "+3 more" instead of "+12 more"; it now counts from the host's total.
+
+### Changed
+- The OTA environment (`esp32c3-ota`) takes the board's address and password from `secrets.ini` (`ota_host`, `ota_pass`); they were written into `platformio.ini`. An existing `secrets.ini` needs those two lines (see `secrets.ini.example`).
+
+### Under the hood
 - `platformio.ini` pins `espressif32@6.12.0` (Arduino core 2.0.17): the unpinned platform now pulls Arduino core 3.x, where `ledcSetup`/`ledcAttachPin` are gone and the build failed.
-- `CLAUDE.md` with the working rules for this repo.
+- `CLAUDE.md` with the working rules for this repo; README rewritten; GitHub check that builds the firmware; `THIRD_PARTY_NOTICES.md` cleaned up.
 
-## [0.2.3] - 2025-09-05
+## v0.2.3 — 2025-09-05
 
-#### Added
+### Added
 - Web UI:
   - ESP32 card now shows **Case temperature (Dallas sensor)**, same source as E-Ink Debug page.
   - `/status.json` now exposes `"case_c"` (null if unavailable).
 
-#### Changed
+### Changed
 - All HTML pages now sent with explicit `UTF-8` charset to ensure correct rendering.
 - Degree symbol is encoded as `&deg;C` to avoid garbled characters (e.g. “Â°C”).
 
-#### Fixed
+### Fixed
 - Temperature display on the web dashboard no longer shows stray “Â” before the degree symbol.
 
-## [0.2.2] - 2025-08-29
+## v0.2.2 — 2025-08-29
 
-#### Added
+### Added
 - Web UI:
   - **Update Page** button that mirrors a single tap (re-renders current page and arms advance window).
   - **Next Page** button to advance to the next normal page and redraw immediately.
   - Endpoints: **`/api/ui/page/update`** and **`/api/ui/page/next`**.
   - Modern button styling utilities (`.btn`, `.btn-ghost`).
 
-#### Changed
+### Changed
 - **Exit Debug Page** now cleanly leaves Debug mode and **immediately renders** the normal page (no simulated double-tap).
 - All action buttons now use the **`btn btn-ghost`** style.
 - Visibility: **Update Page** and **Next Page** are shown only in **TOUCH** mode and when **not** in Debug.
 
-#### Fixed
+### Fixed
 - Eliminated blank page caused by an unclosed `<style>` / improperly concatenated raw CSS blocks.
 
-## [0.2.1] - 2025-08-26
+## v0.2.1 — 2025-08-26
 
-#### Added
+### Added
 - Website:
   - Favicon with transparent background (T red, L black, larger font).
   - `<title>` alias set to **ThinkLab Dash** for browser tab.
@@ -48,15 +60,15 @@
   - Proxmox disk overview showing each disk as active/idle square.
   - Disk legend row explaining icons (■ active / □ idle).
 
-#### Changed
+### Changed
 - Website layout polished for consistency with e-ink Overview/Disk pages.
 - Minor CSS cleanup for disk icons and alignment.
 
-#### Fixed
+### Fixed
 - Unified uptime formatting (days, hours, minutes) across ESP and host cards.
 
-## [0.2.0] - 2025-08-26
-#### Added
+## v0.2.0 — 2025-08-26
+### Added
 - **Wi-Fi module**
   - Automatic connection to configured SSID.
   - Connection watchdog: if DNS not resolvable, Wi-Fi is disabled, waits 30 s, then retries.
@@ -72,11 +84,11 @@
   - Serves a status page with current Wi-Fi info and basic hostmon data.
   - Placeholder for future JSON API endpoints.
 
-#### Changed
+### Changed
 - Refactored Wi-Fi reconnect handling to avoid crashes when serial monitor disconnects/reconnects.
 - Adjusted Wi-Fi RSSI symbol placement (-5 px X, +4 px Y offset).
 
-## [0.1.9] - 2025-08-15
+## v0.1.9 — 2025-08-15
 ### Added
 - **Fan controller hysteresis & dwell knobs**:
   - `FAN_OFF_BELOW_PCT` (default **8**) – strictly below this → **0% (OFF)**
@@ -95,11 +107,11 @@
 - **Debug page**:
   - Fan telemetry lines (`FanCmd`, `FanOut`, `FanAct`) aligned with existing layout using `labelX` / `valueR`.
 
-## [0.1.8] - 2025-08-15
+## v0.1.8 — 2025-08-15
 ### Changed
 - **Overview page**:
   - Strips CIDR suffix from displayed IP address during rendering  
-    (e.g., `192.168.100.103/24` → `192.168.100.103`).
+    (e.g., `192.0.2.10/24` → `192.0.2.10`).
   - Kept `"Case:"` label for server internal/case temperature (unchanged from previous behavior).
   - No parser changes; render-only tweak in `page_overview.cpp`.
   - Preserves existing formats:
@@ -108,7 +120,7 @@
     - RAM `used/total GiB`
     - Uptime `Xd Yh`
 
-## [0.1.7] - 2025-08-15
+## v0.1.7 — 2025-08-15
 ### Added
 - **Fan controller module** (`fanctrl`):
   - Dallas temperature–based PWM control for `FAN1` using a piecewise-linear curve.
@@ -141,7 +153,7 @@
   - Drops explicit host error frames (e.g., `{"error":"unknown_command",...}`).
   - Non-JSON chatter already ignored by the brace-framed reader.
 
-## [0.1.6] - 2025-08-14
+## v0.1.6 — 2025-08-14
 ### Added
 - `DEBUG_IN_ROTATION` flag to control whether the Debug page appears in normal page rotation.
 - Double-tap gesture to enter/exit dedicated Debug mode (Debug page refreshes on its own timer in this mode).
@@ -160,9 +172,7 @@
 - Build errors from incompatible return types in page title functions.
 - Removed Debug page from rotation unless explicitly enabled via `DEBUG_IN_ROTATION`.
 
----
-
-## [0.1.5] - 2025-08-14
+## v0.1.5 — 2025-08-14
 ### Added
 - Fan1 PWM + tachometer module (`fan1_pwm`, `fan1_tach`)
 - Fan2 tachometer module (`fan2_tach`)
@@ -173,9 +183,7 @@
 - Debug page spacing reduced to `LINE_H=15` for more visible lines
 - All fan/experimental includes now `#ifdef` guarded for `platformio.ini` control
 
----
-
-## [0.1.4] - 2025-08-13
+## v0.1.4 — 2025-08-13
 ### Added
 - Debug page JSON length display
 - RAM usage display on Overview (Used/Total GiB)

@@ -78,6 +78,7 @@ void PageNetwork::render(Epd_t &d, const HostState &host, const UiState & /*ui*/
       d.setCursor(labelX, y);
       d.print(F("Up:"));
       ui::printRight(d, valueR, y, fmtRate(host.net_tx_kbps));
+      y += LINE_H;
     }
 
     // Wi‑Fi status + IP (single line): shows local IP if connected, otherwise "OFF"

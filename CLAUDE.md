@@ -15,17 +15,36 @@ go into both repos together.
   (`claude-setup/homelab.md`, wiki).
 - One branch, `main`; the old feature/release branches on GitHub are
   merged or abandoned — don't build on them.
+- **The board runs firmware newer than this repo** (found 2026-11-15): its
+  web page has a *Cooling* card (fan 25 %/50 %/Auto, `/api/fan/*`), *Reboot
+  ESP* (`/api/esp/reboot`) and an *E-Ink Display* card that are in no
+  branch. Until the owner pushes that source, don't flash a build from
+  here: it would drop those features. Changes made here since then (page
+  fixes, OTA secrets, platform pin) must be merged onto it.
 - **Versions**: the real one is `-DFW_VERSION` in `platformio.ini`'s
   `build_flags` (the default in `config.h` is only a fallback). Bump it
   with every flashed change and add a `CHANGELOG.md` entry;
   `HOST_SCRIPT_COMPAT` names the host version it expects.
+- **Pictures**: `tools/render/build.sh` renders every e-paper page to
+  `docs/screenshots/eink-*.png` (PC build of `src/pages/` against the
+  stand-ins in `tools/render/shim/`, made-up data in `render.cpp`); run it
+  after every visible page change and look at the PNGs. A page that uses a
+  new Arduino/GxEPD2 call needs it added to the shim. The web picture comes
+  from `tools/render/web-screenshot.js` against the live board (one GET,
+  every value replaced); never commit real addresses, SSIDs or names.
 - **Build** on the dev box with PlatformIO (venv `~/.venvs/platformio`):
   `pio run -e esp32c3-usb`. A build needs a `secrets.ini`; for a compile
   check copy `secrets.ini.example` (dummy values) and never flash that.
+  The GitHub checks (`checks.yml`) build it that way and render the pages.
+  The platform stays pinned (`espressif32@6.12.0`): newer ones ship
+  Arduino core 3.x, which this code doesn't build with.
 - **Flashing is the owner's call**: the board is plugged into a Proxmox
   host, so USB flashing means physical access or passing the device
   through; over the network it is the web UI's `/update` page or
-  ArduinoOTA (`esp32c3-ota` env). Ask before flashing.
+  ArduinoOTA (`esp32c3-ota` env, address and password from `secrets.ini`).
+  As a fallback the host it is plugged into can flash it over USB with
+  `esptool` (stop `hl-hostmon` first, it holds the port). Ask before
+  flashing.
 - Budget: the C3 has no PSRAM. Keep the JSON document size
   (`JSON_DOC_CAP` in `serial_client.cpp`) above the real payload with
   headroom — a payload that doesn't fit is dropped silently

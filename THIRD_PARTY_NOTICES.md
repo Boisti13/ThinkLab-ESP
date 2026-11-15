@@ -1,21 +1,15 @@
-# Third-Party Notices
+# Third-party notices
 
-This firmware uses the following libraries. Each remains under its own license.
+The firmware is built with these libraries; each stays under its own licence.
 
-- **GxEPD2** — GPL-3.0  
-  ZinggJM/GxEPD2. See LICENSE in upstream repo. https://github.com/ZinggJM/GxEPD2 (GPL-3.0). :contentReference[oaicite:6]{index=6}
+| Library | Licence | Source |
+|---|---|---|
+| GxEPD2 | GPL-3.0 | <https://github.com/ZinggJM/GxEPD2> |
+| Adafruit GFX Library (incl. its fonts) | BSD-2-Clause | <https://github.com/adafruit/Adafruit-GFX-Library> |
+| ArduinoJson | MIT | <https://github.com/bblanchon/ArduinoJson> |
+| DallasTemperature | MIT | <https://github.com/milesburton/Arduino-Temperature-Control-Library> |
+| OneWire | MIT-style (see the source headers) | <https://github.com/PaulStoffregen/OneWire> |
+| Arduino core for ESP32 (WiFi, ESPmDNS, ArduinoOTA, WebServer, Update) | LGPL-2.1 | <https://github.com/espressif/arduino-esp32> |
 
-- **Adafruit GFX Library** — BSD (permissive)  
-  Adafruit/Adafruit-GFX-Library. See `license.txt`. :contentReference[oaicite:7]{index=7}
-
-- **ArduinoJson** — MIT  
-  bblanchon/ArduinoJson. See license on site. :contentReference[oaicite:8]{index=8}
-
-- **DallasTemperature** — MIT  
-  milesburton/Arduino-Temperature-Control-Library. :contentReference[oaicite:9]{index=9}
-
-- **OneWire** — see upstream for license text  
-  PaulStoffregen/OneWire. License metadata is not explicit in the registry/docs; include the license header from the source files when redistributing. :contentReference[oaicite:10]{index=10}
-
-- **Arduino-ESP32 core (incl. WiFi/ESPmDNS/ArduinoOTA)** — **LGPL-2.1**  
-  espressif/arduino-esp32. See `LICENSE.md`. :contentReference[oaicite:11]{index=11}
+`tools/render/` compiles the page code against Adafruit GFX on a PC; it
+downloads the library at build time and doesn't ship it.
