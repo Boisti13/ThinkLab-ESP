@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+#### Under the hood
+- `platformio.ini` pins `espressif32@6.12.0` (Arduino core 2.0.17): the unpinned platform now pulls Arduino core 3.x, where `ledcSetup`/`ledcAttachPin` are gone and the build failed.
+- `CLAUDE.md` with the working rules for this repo.
+
 ## [0.2.3] - 2025-09-05
 
 #### Added
