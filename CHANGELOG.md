@@ -4,6 +4,19 @@ All notable changes, newest first. Each version is tagged `vX.Y.Z` on `main`.
 
 ## Unreleased
 
+## v0.3.2 — 2026-11-15
+
+### Fixed
+- **Auto fan control could not start the fan.** The dead zone set the smoothed value back to 0 every 200 ms tick, and from 0 the smoothing only climbs about 0.5 % per tick, so below 8 % it never got going: once stopped, the fan only came back when a long e-paper redraw stalled the loop while the curve asked for 32 % or more (around 41 °C). The smoothing now runs on the command alone, and on/off is decided separately.
+- **No chatter at the low end**: the fan starts when the smoothed command reaches 10 % and stops below 6 %, and stays on or off for at least a minute each, instead of switching (with a full-power kick) every tick around 8 %.
+- **Sensor errors are no temperature**: the DS18B20 library reports −127 °C when the sensor doesn't answer and 85 °C for a reading that never ran; both were taken as real (−127 meant fan off). They now count as "no reading", so the fan goes to its safe 40 % after 15 s.
+- A long loop stall no longer makes the fan filter jump.
+
+### Added
+- `POST /api/fan/manual/<0..100>`: any manual duty (the page's buttons still use 25 and 50; numbers outside 0–100 get 400).
+- `status.json`: `mac` (stable ID for Home Assistant), `fan_curve_pct` (what the curve asks for), `fan_on`.
+- `tools/fansim/`: runs the real fan controller on a PC against a scripted temperature run.
+
 ## v0.3.1 — 2026-11-15
 
 ### Added

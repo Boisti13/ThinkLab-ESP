@@ -169,11 +169,20 @@
 #define USE_FANCTRL 1
 #endif
 
-#ifndef FAN_OFF_BELOW_PCT
-#define FAN_OFF_BELOW_PCT 5 // commanded < 5% -> 0%
+// On/off with hysteresis: the smoothed command must reach FAN_ON_ABOVE_PCT to
+// start the fan and fall below FAN_OFF_BELOW_PCT to stop it, and each state
+// is held at least FAN_MIN_ON_MS / FAN_MIN_OFF_MS.
+#ifndef FAN_ON_ABOVE_PCT
+#define FAN_ON_ABOVE_PCT 10
 #endif
-#ifndef FAN_MIN_DUTY_PCT
-#define FAN_MIN_DUTY_PCT 8 // reliable minimum
+#ifndef FAN_OFF_BELOW_PCT
+#define FAN_OFF_BELOW_PCT 6
+#endif
+#ifndef FAN_MIN_ON_MS
+#define FAN_MIN_ON_MS 60000UL
+#endif
+#ifndef FAN_MIN_OFF_MS
+#define FAN_MIN_OFF_MS 60000UL
 #endif
 #ifndef FAN_RATE_PCT_PER_S
 #define FAN_RATE_PCT_PER_S 10 // slope limiter (up/down)

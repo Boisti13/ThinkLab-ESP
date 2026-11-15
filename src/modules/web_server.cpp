@@ -9,6 +9,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Update.h>
+#include <uri/UriBraces.h>
 
 #if USE_FAN1
 #include "modules/fan1_pwm.h"
@@ -222,26 +223,24 @@ static void handleFanStatus()
     server.send(200, "application/json", out);
 }
 
-static void handleFanManual25()
+// POST /api/fan/manual/<0..100>: manual duty (ends after FAN_MANUAL_MAX_MS or at
+// FAN_MANUAL_OVERRIDE_C, see fanctrl). The web page's buttons use 25 and 50.
+static void handleFanManual()
 {
     if (!checkAuth())
         return;
-#if USE_FANCTRL
-    fanCtrlSetManual(25);
-#elif USE_FAN1
-    fan1PwmSetPercent(25);
-#endif
-    server.send(204);
-}
-
-static void handleFanManual50()
-{
-    if (!checkAuth())
+    const String arg = server.pathArg(0);
+    char *end = nullptr;
+    const long pct = strtol(arg.c_str(), &end, 10);
+    if (arg.length() == 0 || *end != '\0' || pct < 0 || pct > 100)
+    {
+        server.send(400, "text/plain", "duty must be 0..100");
         return;
+    }
 #if USE_FANCTRL
-    fanCtrlSetManual(50);
+    fanCtrlSetManual((uint8_t)pct);
 #elif USE_FAN1
-    fan1PwmSetPercent(50);
+    fan1PwmSetPercent((uint8_t)pct);
 #endif
     server.send(204);
 }
@@ -672,6 +671,7 @@ static void handleStatusJson()
     out += (isnan(g_host.local_temp_c) ? String("null") : String(g_host.local_temp_c, 1));
     out += ",";
     out += "\"build\":\"" + String(BUILD_VERSION) + "\",";
+    out += "\"mac\":\"" + WiFi.macAddress() + "\",";
     // Host link: seconds since the last good answer, and whether the screen marks it stale
     out += "\"host_age_s\":";
     out += (g_ui.lastParseOkMs ? String((millis() - g_ui.lastParseOkMs) / 1000UL) : String("null"));
@@ -695,6 +695,8 @@ static void handleStatusJson()
     out += ",\"fan_pct\":" + String(fanPct);
     out += ",\"fan_rpm\":" + String(fanRpm);
     out += ",\"fan_manual_left_s\":" + String(manualLeft);
+    out += ",\"fan_curve_pct\":" + (isnan(g_host.fan_duty_cmd) ? String("null") : String(g_host.fan_duty_cmd, 1));
+    out += ",\"fan_on\":" + String(g_host.fan_active ? "true" : "false");
     out += "}";
     server.sendHeader("Cache-Control", "no-store");
     server.send(200, "application/json", out);
@@ -716,8 +718,7 @@ void webServerSetup()
 
     // Fan control endpoints
     server.on("/api/fan/status", HTTP_GET, handleFanStatus);
-    server.on("/api/fan/manual/25", HTTP_POST, handleFanManual25);
-    server.on("/api/fan/manual/50", HTTP_POST, handleFanManual50);
+    server.on(UriBraces("/api/fan/manual/{}"), HTTP_POST, handleFanManual);
     server.on("/api/fan/auto", HTTP_POST, handleFanAuto);
 
     // ESP control endpoints

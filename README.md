@@ -36,7 +36,8 @@ same and lets you switch pages, drive the case fan and upload new firmware.
 - **Web page**: status, page and mode buttons, fan control (25 %, 50 %,
   auto), reboot, firmware upload, `status.json`; behind a login
 - **Case fan**: 4-pin PWM on a temperature curve from the Dallas sensor,
-  with a start kick, smoothing and a safe speed if the sensor fails;
+  with a start kick, smoothing, on/off hysteresis and a safe speed if the
+  sensor fails;
   tachometer inputs for two fans; manual 25 %/50 % from the web page ends
   by itself after an hour or at 50 °C
 - **Safe updates**: a new build is kept only once it gets Wi-Fi, otherwise
@@ -175,6 +176,14 @@ pio device monitor                  # the board's own log, while no host service
 
 The GitHub checks build the firmware with the example secrets and render
 the pages.
+
+### Fan controller on the PC
+
+`tools/fansim/build.sh` compiles `src/modules/fanctrl.cpp` with the curve and
+fan settings from `platformio.ini` and runs it through a scripted day (boot
+without sensor, cool night, warm-up, the 32 °C edge, sensor lost), printing
+the duty, time on, switches and start kicks for each phase. Run it after any
+change to the controller.
 
 ### Pictures
 

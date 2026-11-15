@@ -29,7 +29,11 @@ void DallasProbe::tick() {
   // CONVERTING -> read after typical conversion time
   if (state == CONVERTING) {
     if (now - tStart >= 200) {         // >187ms for 10-bit
-      lastC_ = dallas.getTempCByIndex(0);
+      // The library reports errors as numbers: -127 (DEVICE_DISCONNECTED_C)
+      // when the sensor doesn't answer, 85.0 = power-on value of a reading
+      // that never ran. Both mean "no reading", not a temperature.
+      const float t = dallas.getTempCByIndex(0);
+      lastC_ = (t <= DEVICE_DISCONNECTED_C + 1.0f || t == 85.0f || t > 125.0f) ? NAN : t;
       lastSampleMs = now;
       state = IDLE;
     }

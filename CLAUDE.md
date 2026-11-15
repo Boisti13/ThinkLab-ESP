@@ -24,6 +24,9 @@ go into both repos together.
   `build_flags` (the default in `config.h` is only a fallback). Bump it
   with every flashed change and add a `CHANGELOG.md` entry;
   `HOST_SCRIPT_COMPAT` names the host version it expects.
+- **Fan controller**: `tools/fansim/build.sh` runs `fanctrl.cpp` on the PC
+  through a scripted temperature run; run it after every controller change
+  and check boot, warm-up, the low-end edge (no chatter) and sensor loss.
 - **Pictures**: `tools/render/build.sh` renders every e-paper page to
   `docs/screenshots/eink-*.png` (PC build of `src/pages/` against the
   stand-ins in `tools/render/shim/`, made-up data in `render.cpp`); run it
