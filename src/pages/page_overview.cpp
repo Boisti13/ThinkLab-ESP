@@ -2,7 +2,9 @@
 #include "ui_theme.h"
 #include "state.h"
 #include "config.h"
-#include <WiFi.h> 
+#include <WiFi.h>
+#include "modules/fan1_tach.h"
+#include "modules/fan2_tach.h"
 #include <Fonts/FreeMono9pt7b.h>
 
 void PageOverview::render(Epd_t &d, const HostState &host, const UiState &ui)
@@ -15,7 +17,7 @@ void PageOverview::render(Epd_t &d, const HostState &host, const UiState &ui)
     ui::header(d, F("Status"));
     d.setFont(&FreeMono9pt7b);
 
-    const int16_t LINE_H = 22;
+    const int16_t LINE_H = 20;   // seven lines above the footer
     const int16_t labelX = 4;
     const int16_t valueR = d.width() - 4;
 
@@ -67,6 +69,29 @@ void PageOverview::render(Epd_t &d, const HostState &host, const UiState &ui)
     d.print(F("Case:"));
     ui::printRight(d, valueR, y, isnan(host.local_temp_c) ? String("-") : String(host.local_temp_c, 1) + "C");
     y += LINE_H;
+
+    // Fans: both speeds ("193/175"), "off" when both stand still
+#if USE_FAN1
+    d.setCursor(labelX, y);
+    d.print(F("Fans:"));
+    {
+      const int r1 = fan1TachGetRPM();
+      int r2 = -1;
+#if USE_FAN2_TACH
+      r2 = fan2TachGetRPM();
+#endif
+      String v;
+      if (r1 == 0 && r2 <= 0) v = F("off");
+      else {
+        v = r1 < 0 ? String("-") : String(r1);
+#if USE_FAN2_TACH
+        v += "/" + (r2 < 0 ? String("-") : String(r2));
+#endif
+      }
+      ui::printRight(d, valueR, y, v);
+    }
+    y += LINE_H;
+#endif
 
     // Uptime (days & hours)
     d.setCursor(labelX, y);

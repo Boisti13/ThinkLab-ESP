@@ -21,7 +21,7 @@ same and lets you switch pages, drive the case fan and upload new firmware.
 
 ## Highlights
 
-- **Five pages**: Status (IP, CPU, RAM, case temperature, uptime, link),
+- **Five pages**: Status (IP, CPU, RAM, case temperature, both fans, uptime, link),
   Network (rates, Wi-Fi), VMs/LXCs (running/total, running guests first),
   Disks (active or asleep), Debug
 - **Always current**: asks the host every minute and redraws the page with

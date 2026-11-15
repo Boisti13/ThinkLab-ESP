@@ -544,8 +544,8 @@ async function fanFetchStatus(){
     const modeStr = j.auto ? 'AUTO' : ('MANUAL ' + j.pct + '%' + (j.manual_left_s ? ' (' + Math.ceil(j.manual_left_s / 60) + ' min left)' : ''));
 
     const r = (v) => (typeof v === 'number' && v >= 0) ? v : '—';
-    let rpmStr = r(j.rpm) + ' / ' + r(j.rpm2) + ' RPM';
-    if (j.stalled) rpmStr += ' (STALLED)';
+    let rpmStr = 'fan 1 ' + r(j.rpm) + ' rpm | fan 2 ' + r(j.rpm2) + ' rpm';
+    if (j.stalled) rpmStr += ' | STALLED';
 
     let outStr = '';
     if (typeof j.out_pct === 'number'){

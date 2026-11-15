@@ -4,6 +4,14 @@ All notable changes, newest first. Each version is tagged `vX.Y.Z` on `main`.
 
 ## Unreleased
 
+## v0.3.5 — 2026-11-15
+
+### Added
+- **Status page: `Fans:` line** with both speeds (`193/175`, `off` when both stand still); the page's lines are 20 px apart to fit seven above the footer.
+
+### Changed
+- Web page: the fan line names both fans (`fan 1 193 rpm | fan 2 175 rpm`).
+
 ## v0.3.4 — 2026-11-15
 
 ### Added
