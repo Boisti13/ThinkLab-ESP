@@ -12,9 +12,9 @@ asks the host for the numbers over USB; the host side is
 A Dallas sensor adds the case temperature, and a small web page shows the
 same and lets you switch pages, drive the case fan and upload new firmware.
 
-| Status | Network | VMs / LXCs | Disks | Debug |
-|---|---|---|---|---|
-| ![Status page](docs/screenshots/eink-overview.png) | ![Network page](docs/screenshots/eink-network.png) | ![VMs and containers](docs/screenshots/eink-vms.png) | ![Disks](docs/screenshots/eink-disks.png) | ![Debug page](docs/screenshots/eink-debug.png) |
+| Status | Network | VMs / LXCs | Disks | Debug | No host data |
+|---|---|---|---|---|---|
+| ![Status page](docs/screenshots/eink-overview.png) | ![Network page](docs/screenshots/eink-network.png) | ![VMs and containers](docs/screenshots/eink-vms.png) | ![Disks](docs/screenshots/eink-disks.png) | ![Debug page](docs/screenshots/eink-debug.png) | ![Stale data marker](docs/screenshots/eink-stale.png) |
 
 *Pictures rendered on a PC from the page code with made-up data
 ([how](#pictures)).*
@@ -22,8 +22,11 @@ same and lets you switch pages, drive the case fan and upload new firmware.
 ## Highlights
 
 - **Five pages**: Status (IP, CPU, RAM, case temperature, uptime, link),
-  Network (rates, Wi-Fi), VMs/LXCs (running/total and names), Disks
-  (active or asleep), Debug
+  Network (rates, Wi-Fi), VMs/LXCs (running/total, running guests first),
+  Disks (active or asleep), Debug
+- **Always current**: asks the host every minute and redraws the page with
+  each answer, with partial refresh (no flash); a black **!** in the header
+  when the host hasn't answered for three minutes
 - **Touch or auto**: one tap refreshes, a second tap within 20 s turns the
   page, a long press switches to automatic rotation; double tap opens Debug
 - **No network needed for the screen**: data comes over USB from the host;
@@ -34,7 +37,12 @@ same and lets you switch pages, drive the case fan and upload new firmware.
   auto), reboot, firmware upload, `status.json`; behind a login
 - **Case fan**: 4-pin PWM on a temperature curve from the Dallas sensor,
   with a start kick, smoothing and a safe speed if the sensor fails;
-  tachometer inputs for two fans
+  tachometer inputs for two fans; manual 25 %/50 % from the web page ends
+  by itself after an hour or at 50 °C
+- **Safe updates**: a new build is kept only once it gets Wi-Fi, otherwise
+  the board goes back to the previous one by itself
+- **Home Assistant**: a ready package for case temperature, fan, link and
+  alerts ([below](#home-assistant))
 
 ![Web page](docs/screenshots/web.png)
 
@@ -70,7 +78,7 @@ same and lets you switch pages, drive the case fan and upload new firmware.
    ```
 
 3. Plug the board into the host. It sends `INFO` once and then `GET`
-   every two minutes; the first page appears with the first answer.
+   every minute; the page redraws with each answer.
 
 | `secrets.ini` key | Used for |
 |---|---|
@@ -79,10 +87,25 @@ same and lets you switch pages, drive the case fan and upload new firmware.
 | `WEB_USER`, `WEB_PASS` | web page login; `WEB_PASS` is also the ArduinoOTA password |
 | `ota_host`, `ota_pass` | the `esp32c3-ota` environment (`pio run -e esp32c3-ota -t upload`) |
 
-**Updating** later: `pio run -e esp32c3-ota -t upload`, or build and
-upload `.pio/build/esp32c3-usb/firmware.bin` on the web page under
-*Firmware → Upload*. Use a password of your own: anyone who knows it can
-flash the board.
+**Updating** later: build and upload `.pio/build/esp32c3-usb/firmware.bin`
+on the web page under *Firmware → Upload* (or `curl -u user:pass -F
+update=@firmware.bin http://<board>/update`), or `pio run -e esp32c3-ota -t
+upload` from a machine on the same network (ArduinoOTA connects back to the
+sender, so not through a NAT or VPN gateway). A new build that doesn't get
+Wi-Fi within 5 minutes is undone by the bootloader. Use a password of your
+own: anyone who knows it can flash the board.
+
+## Home Assistant
+
+[`homeassistant/thinklab_display.yaml`](homeassistant/thinklab_display.yaml)
+is a package that reads `status.json` every minute: case temperature, fan
+duty and RPM, auto/manual and minutes left, Wi-Fi, uptime, firmware and
+whether the board still gets host data. Scripts set the fan to 25 %, 50 %
+or auto, and three automations send a message when the case stays at
+50 °C, when the fan is driven but doesn't turn, or when the host stops
+answering. Put the login into `secrets.yaml` (`thinklab_display_user`,
+`thinklab_display_pass`), set the board's address and your notify entity,
+and restart Home Assistant the first time (`rest:` loads at start-up).
 
 ## Configuration
 
@@ -91,10 +114,14 @@ defaults in `src/config.h`:
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `POLL_INTERVAL_MS` | 120000 | how often to ask the host |
+| `POLL_INTERVAL_MS` | 60000 | how often to ask the host |
+| `STALE_AFTER_S` | 3 polls | after this long without an answer every page shows "!" |
+| `FULL_REFRESH_EVERY` | 20 | a full e-paper refresh every N redraws, partial ones in between |
+| `OTA_VERIFY_TIMEOUT_MS` | 300000 | a new build must get Wi-Fi within this time or is rolled back |
+| `FAN_MANUAL_MAX_MS`, `FAN_MANUAL_OVERRIDE_C` | 1 h, 50 °C | manual fan duty ends after this long or at this temperature |
 | `LINK_TIMEOUT_S` | 600 | Status shows *Timeout* after this long without an answer |
 | `RX_LINEBUF_BYTES` | 12288 | largest answer the reader takes |
-| `JSON_DOC_CAP` | 9216 | ArduinoJson memory for one answer (needs about 1.5× the answer's size) |
+| `JSON_DOC_BYTES` | 24576 | ArduinoJson memory for one answer (needs about 1.5× the answer's size) |
 | `USE_WIFI`, `USE_DALLAS`, `USE_FAN1`, `USE_FAN2_TACH`, `USE_FANCTRL` | on | compile features in or out |
 | `FC_PT1_C` … `FC_PT5_P` | see `platformio.ini` | fan curve: five points of °C → duty % |
 | `DEBUG_IN_ROTATION` | 0 | Debug page in the normal rotation |
@@ -122,8 +149,9 @@ The fields the pages use:
 ```
 
 Answers with another `schema_version`, or with an `error` field, are
-ignored. The board keeps up to six guests of each kind; the VMs/LXCs page
-shows three VMs and four containers and counts the rest as "+N more".
+ignored. The board keeps up to six guests of each kind, running ones first;
+the VMs/LXCs page shows three VMs and four containers and counts the rest
+as "+N more".
 
 ## Layout
 
@@ -136,6 +164,7 @@ shows three VMs and four containers and counts the rest as "+N more".
 | `src/modules/` | Wi-Fi/OTA, web page, Dallas sensor, fan PWM, tach and control |
 | `tools/render/` | renders the pages on a PC (below) |
 | `docs/screenshots/` | the pictures in this README |
+| `homeassistant/` | Home Assistant package |
 
 ## Development
 

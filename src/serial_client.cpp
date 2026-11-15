@@ -6,7 +6,7 @@
 
 // ---------- JSON doc capacity (can be overridden in config.h / build_flags) ----------
 #ifndef JSON_DOC_CAP
-#define JSON_DOC_CAP 9216 // generous headroom for bigger payloads
+#define JSON_DOC_CAP JSON_DOC_BYTES
 #endif
 
 static DynamicJsonDocument s_doc(JSON_DOC_CAP);
@@ -190,6 +190,36 @@ static int8_t extractDiskTempC(JsonObjectConst d)
   return -127;
 }
 
+// Guest status: "running" (pvesh) or "1" (older hosts)
+static bool guestRunning(JsonObjectConst g)
+{
+  const char *st = g["status"] | "";
+  return strcmp(st, "running") == 0 || strcmp(st, "1") == 0;
+}
+
+// Copy up to `cap` guests, running ones first.
+static void copyGuests(JsonVariantConst arr, GuestInfo *dst, size_t cap, uint8_t &count)
+{
+  count = 0;
+  if (!arr.is<JsonArrayConst>())
+    return;
+  for (int pass = 0; pass < 2; ++pass)
+  {
+    const bool wantRunning = (pass == 0);
+    for (JsonObjectConst g : arr.as<JsonArrayConst>())
+    {
+      if (count >= cap)
+        return;
+      if (guestRunning(g) != wantRunning)
+        continue;
+      GuestInfo &d = dst[count++];
+      d.id = g["id"].isNull() ? -1 : g["id"].as<int32_t>();
+      safeCopy(d.name, sizeof(d.name), g["name"] | "");
+      d.running = wantRunning;
+    }
+  }
+}
+
 bool SerialClient::parseAndStore(const char *json, size_t len, HostState &host, UiState &ui)
 {
   if (!json || len == 0)
@@ -318,38 +348,10 @@ bool SerialClient::parseAndStore(const char *json, size_t len, HostState &host, 
   {
     JsonObjectConst p = root["proxmox"];
 
-    if (p["vms"].is<JsonArrayConst>())
-    {
-      const size_t CAP = sizeof(host.vm_list) / sizeof(host.vm_list[0]);
-      for (JsonObjectConst v : p["vms"].as<JsonArrayConst>())
-      {
-        if (host.vm_list_count >= CAP)
-          break;
-        auto &dst = host.vm_list[host.vm_list_count++];
-        dst.id = v["id"].isNull() ? -1 : v["id"].as<int32_t>();
-        const char *nm = v["name"] | "";
-        strncpy(dst.name, nm, sizeof(dst.name) - 1);
-        const char *st = v["status"] | "";
-        // Some hosts send "running"/"stopped"; yours sends "0"/"1"
-        dst.running = (st && (strcmp(st, "running") == 0 || strcmp(st, "1") == 0));
-      }
-    }
-
-    if (p["lxcs"].is<JsonArrayConst>())
-    {
-      const size_t CAP = sizeof(host.lxc_list) / sizeof(host.lxc_list[0]);
-      for (JsonObjectConst c : p["lxcs"].as<JsonArrayConst>())
-      {
-        if (host.lxc_list_count >= CAP)
-          break;
-        auto &dst = host.lxc_list[host.lxc_list_count++];
-        dst.id = c["id"].isNull() ? -1 : c["id"].as<int32_t>();
-        const char *nm = c["name"] | "";
-        strncpy(dst.name, nm, sizeof(dst.name) - 1);
-        const char *st = c["status"] | "";
-        dst.running = (st && (strcmp(st, "running") == 0 || strcmp(st, "1") == 0));
-      }
-    }
+    // Keep running guests first (the board keeps at most MAX_GUESTS of each),
+    // each group in the host's order (by ID).
+    copyGuests(p["vms"], host.vm_list, sizeof(host.vm_list) / sizeof(host.vm_list[0]), host.vm_list_count);
+    copyGuests(p["lxcs"], host.lxc_list, sizeof(host.lxc_list) / sizeof(host.lxc_list[0]), host.lxc_list_count);
   }
 
   // ---- IP block ----

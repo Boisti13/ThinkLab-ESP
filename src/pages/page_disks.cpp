@@ -32,16 +32,10 @@ void PageDisks::render(Epd_t& d, const HostState& host, const UiState& /*ui*/) {
     const int16_t LINE_H   = 20;
     const int16_t bulletX  = 0;               // dash bullet all the way left
     const int16_t valueR   = d.width() - 4;   // right edge for values/icons
-    const int16_t gapMin   = 6;               // gap between temp and icon
-    const int16_t ICON_W   = 8;               // must match drawStatusIcon()
-    const int16_t TEMP_SHIFT_LEFT = 10;       // <— move temp this many px left
 
     // Name starts right after "- "
     const uint16_t dashW   = textW(d, String(F("- ")));
     const int16_t  nameX   = bulletX + dashW;
-
-    // Reserve space on right: icon, gap, then temp (shifted left)
-    const int16_t tempValueR = valueR - (ICON_W + gapMin + 1 + TEMP_SHIFT_LEFT);
 
     int16_t y = ui::content_top();
 
@@ -61,12 +55,9 @@ void PageDisks::render(Epd_t& d, const HostState& host, const UiState& /*ui*/) {
         d.setCursor(bulletX, y); d.print(F("- "));
         d.setCursor(nameX,   y); d.print(dk.name[0] ? dk.name : "-");
 
-        // Rightmost: status icon
+        // Rightmost: status icon (filled = spinning/active, outline = asleep).
+        // No temperature: the host never reads it, so as not to wake disks.
         drawStatusIcon(d, valueR, y, dk.active);
-
-        // Temperature right-aligned just to the left of the icon (with extra left shift)
-        String t = (dk.temp_c <= -100) ? String("-") : String(dk.temp_c) + "C";
-        ui::printRight(d, tempValueR, y, t);
 
         y += LINE_H;
       }

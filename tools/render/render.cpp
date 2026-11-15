@@ -10,6 +10,7 @@
 #include "pages/page_overview.h"
 #include "pages/page_vms.h"
 #include "state.h"
+#include "ui_theme.h"
 
 FakeWiFi WiFi;
 static uint32_t g_now = 3600000;  // the board has been up an hour
@@ -50,8 +51,10 @@ static void demo(HostState &h, UiState &ui) {
   guest(h.vm_list[0], 100, "homeassistant", true);
   guest(h.vm_list[1], 120, "windows-test", false);
   h.vm_list_count = 2;
-  const char *cts[] = {"dns", "proxy", "media", "books", "vpn", "backup"};
-  for (int i = 0; i < 6; i++) guest(h.lxc_list[i], 101 + i, cts[i], i != 2);
+  // As the board keeps them: running first, then stopped
+  const char *cts[] = {"dns", "proxy", "books", "vpn", "backup", "media"};
+  const int ids[] = {101, 102, 104, 105, 106, 103};
+  for (int i = 0; i < 6; i++) guest(h.lxc_list[i], ids[i], cts[i], i != 5);
   h.lxc_list_count = 6;
 
   const char *disks[] = {"nvme0n1", "sda", "sdb", "sdc"};
@@ -110,6 +113,15 @@ int main(int argc, char **argv) {
     d.fillScreen(GxEPD_WHITE);
     pg.p->render(d, host, ui);
     writePbm(d, out + "/eink-" + pg.name + ".pbm");
+  }
+  // The Status page as it looks when the host hasn't answered for a while
+  {
+    static Epd_t d;
+    d.fillScreen(GxEPD_WHITE);
+    ui::setStale(true);
+    ui.lastParseOkMs = g_now - 1500000;
+    overview.render(d, host, ui);
+    writePbm(d, out + "/eink-stale.pbm");
   }
   return 0;
 }

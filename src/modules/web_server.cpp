@@ -4,6 +4,8 @@
 #include "web_server.h"
 #include "state.h"           // HostState
 #include "display_manager.h" // DisplayManager, renderCurrent()
+#include "ui_theme.h"        // ui::dataIsStale()
+#include "modules/wifi_ota.h" // wifiOtaImageState(), upload/reboot hooks
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Update.h>
@@ -208,6 +210,12 @@ static void handleFanStatus()
     {
         out += String(outPct, 1); // one decimal place
     }
+    out += ",\"manual_left_s\":";
+#if USE_FANCTRL
+    out += String(fanCtrlManualLeftS());
+#else
+    out += "0";
+#endif
     out += "}";
 
     server.sendHeader("Cache-Control", "no-store");
@@ -219,9 +227,8 @@ static void handleFanManual25()
     if (!checkAuth())
         return;
 #if USE_FANCTRL
-    fanCtrlSetEnabled(false);
-#endif
-#if USE_FAN1
+    fanCtrlSetManual(25);
+#elif USE_FAN1
     fan1PwmSetPercent(25);
 #endif
     server.send(204);
@@ -232,9 +239,8 @@ static void handleFanManual50()
     if (!checkAuth())
         return;
 #if USE_FANCTRL
-    fanCtrlSetEnabled(false);
-#endif
-#if USE_FAN1
+    fanCtrlSetManual(50);
+#elif USE_FAN1
     fan1PwmSetPercent(50);
 #endif
     server.send(204);
@@ -527,7 +533,7 @@ async function fanFetchStatus(){
   const j = await r.json();
   const badge = document.getElementById('fanBadge');
   if (badge){
-    const modeStr = j.auto ? 'AUTO' : ('MANUAL ' + j.pct + '%');
+    const modeStr = j.auto ? 'AUTO' : ('MANUAL ' + j.pct + '%' + (j.manual_left_s ? ' (' + Math.ceil(j.manual_left_s / 60) + ' min left)' : ''));
 
     let rpmStr = 'RPM —';
     if (typeof j.rpm === 'number' && j.rpm >= 0){
@@ -655,7 +661,7 @@ static void handleStatusJson()
         return;
     const bool linkUp = WiFi.isConnected();
     String out;
-    out.reserve(320);
+    out.reserve(512);
     out += "{";
     out += "\"hostname\":\"" + String(HOSTNAME) + "\",";
     out += "\"ip\":\"" + (linkUp ? WiFi.localIP().toString() : String("")) + "\",";
@@ -665,8 +671,32 @@ static void handleStatusJson()
     out += "\"case_c\":";
     out += (isnan(g_host.local_temp_c) ? String("null") : String(g_host.local_temp_c, 1));
     out += ",";
-    out += "\"build\":\"" + String(BUILD_VERSION) + "\"";
+    out += "\"build\":\"" + String(BUILD_VERSION) + "\",";
+    // Host link: seconds since the last good answer, and whether the screen marks it stale
+    out += "\"host_age_s\":";
+    out += (g_ui.lastParseOkMs ? String((millis() - g_ui.lastParseOkMs) / 1000UL) : String("null"));
+    out += ",\"host_stale\":";
+    out += (ui::dataIsStale(g_ui) ? "true" : "false");
+    out += ",\"parse_err\":" + String(g_ui.parseErrCount);
+    out += ",\"image\":\"" + String(wifiOtaImageState()) + "\"";
+    // Fan
+    bool fanAuto = true;
+    uint32_t manualLeft = 0;
+#if USE_FANCTRL
+    fanAuto = fanCtrlGetEnabled();
+    manualLeft = fanCtrlManualLeftS();
+#endif
+    int fanPct = -1, fanRpm = -1;
+#if USE_FAN1
+    fanPct = (int)fan1PwmGetPercent();
+    fanRpm = fan1TachGetRPM();
+#endif
+    out += ",\"fan_auto\":" + String(fanAuto ? "true" : "false");
+    out += ",\"fan_pct\":" + String(fanPct);
+    out += ",\"fan_rpm\":" + String(fanRpm);
+    out += ",\"fan_manual_left_s\":" + String(manualLeft);
     out += "}";
+    server.sendHeader("Cache-Control", "no-store");
     server.send(200, "application/json", out);
 }
 

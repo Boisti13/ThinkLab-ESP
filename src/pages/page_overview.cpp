@@ -90,51 +90,29 @@ void PageOverview::render(Epd_t &d, const HostState &host, const UiState &ui)
       }
       else
       {
+        // Compact age so the line fits: 42s, 25m, 3h
         uint32_t ageS = secsSince(ui.lastParseOkMs);
         bool ok = (ageS <= LINK_TIMEOUT_S);
-        char buf[32];
-        snprintf(buf, sizeof(buf), "%s (%us)", ok ? "Online" : "Timeout", (unsigned)ageS);
+        char age[12];
+        if (ageS < 120)        snprintf(age, sizeof(age), "%us", (unsigned)ageS);
+        else if (ageS < 7200)  snprintf(age, sizeof(age), "%um", (unsigned)(ageS / 60));
+        else                   snprintf(age, sizeof(age), "%uh", (unsigned)(ageS / 3600));
+        char buf[24];
+        snprintf(buf, sizeof(buf), "%s %s", ok ? "Online" : "Lost", age);
         v = String(buf);
       }
       ui::printRight(d, valueR, y, v);
     }
     // y += LINE_H; // not needed unless you add more lines
 
-    // Footer (kept as before)
+    // Footer: page mode left, Wi-Fi bars right
     d.setCursor(4, d.height() - 8);
     d.print(F("["));
     d.print(ui.mode == MODE_TOUCH ? F("TOUCH") : F("AUTO"));
     d.print(F("]"));
 
-    d.setCursor(4, d.height() - 8);
-d.print(F("["));
-d.print(ui.mode == MODE_TOUCH ? F("TOUCH") : F("AUTO"));
-d.print(F("]"));
-
-// Draw WiFi RSSI symbol at bottom-right
-int16_t rssi = WiFi.RSSI();  // returns dBm
-int bars = 0;
-if (rssi > -55)      bars = 4; // excellent
-else if (rssi > -65) bars = 3; // good
-else if (rssi > -75) bars = 2; // fair
-else if (rssi > -85) bars = 1; // weak
-else                 bars = 0; // none
-
-int16_t bx = d.width() - 28;   // move further left (wider bars)
-int16_t by = d.height() - 5;   // baseline
-
-const int barWidth = 4;        // wider bars
-const int spacing  = 3;        // horizontal spacing between bars
-
-for (int i = 0; i < 4; i++) {
-  int h = (i + 1) * 2 + 4; // bar height + 4px
-  int x = bx + i * (barWidth + spacing);
-  if (i < bars) {
-    d.fillRect(x, by - h, barWidth, h, GxEPD_BLACK);
-  } else {
-    d.drawRect(x, by - h, barWidth, h, GxEPD_BLACK);
-  }
-}
+    const int bars = WiFi.isConnected() ? ui::rssi_to_bars(WiFi.RSSI()) : 0;
+    ui::wifi_icon(d, d.width() - 17, d.height() - 5, bars);
 
   } while (d.nextPage());
 }

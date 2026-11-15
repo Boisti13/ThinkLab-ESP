@@ -9,6 +9,7 @@ static float    s_outPct      = 0.0f;  // filtered & rate-limited (%)
 static uint32_t s_kickUntilMs = 0;
 static bool     s_wasOn       = false; // for 0% -> >0% edge detection
 static bool     s_enabled     = true;  // AUTO mode enabled by default
+static uint32_t s_manualSince = 0;     // when manual mode started
 
 static inline float clampf(float v, float lo, float hi) {
   return v < lo ? lo : (v > hi ? hi : v);
@@ -45,12 +46,18 @@ void fanCtrlBegin() {
 }
 
 void fanCtrlTick(HostState& host) {
-  // If AUTO mode is disabled, do nothing – manual PWM (web UI) is in control
+  const uint32_t now = millis();
+
+  // Manual mode (web page): keep the set duty, but give control back to the
+  // curve after FAN_MANUAL_MAX_MS or when the case gets hot.
   if (!s_enabled) {
-    return;
+    const float tC = host.local_temp_c;
+    const bool tooHot  = !isnan(tC) && tC >= (float)FAN_MANUAL_OVERRIDE_C;
+    const bool expired = (now - s_manualSince) >= FAN_MANUAL_MAX_MS;
+    if (!tooHot && !expired) return;
+    fanCtrlSetEnabled(true);
   }
 
-  const uint32_t now = millis();
   if (now - s_lastTick < FAN_TICK_MS) return;
 
   const float dt_s = (now - s_lastTick) / 1000.0f;
@@ -114,6 +121,20 @@ void fanCtrlTick(HostState& host) {
 
 bool fanCtrlGetEnabled() {
   return s_enabled;
+}
+
+void fanCtrlSetManual(uint8_t pct) {
+  s_enabled = false;
+  s_manualSince = millis();
+  fan1PwmSetPercent(pct);
+  s_outPct = pct;   // continue smoothly from here when AUTO resumes
+  s_wasOn = pct > 0;
+}
+
+uint32_t fanCtrlManualLeftS() {
+  if (s_enabled) return 0;
+  const uint32_t used = millis() - s_manualSince;
+  return used >= FAN_MANUAL_MAX_MS ? 0 : (FAN_MANUAL_MAX_MS - used) / 1000UL;
 }
 
 void fanCtrlSetEnabled(bool enabled) {

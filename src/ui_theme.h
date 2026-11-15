@@ -12,8 +12,11 @@ namespace ui {
   inline int16_t content_top() { return HEADER_H + CONTENT_PAD; }
 
   // --- Header ---
-  // Draw centered bold header + 1px underline
+  // Draw centered bold header + 1px underline; with stale data a black "!"
+  // box at the left edge (set by DisplayManager before each redraw).
   void header(Epd_t& d, const __FlashStringHelper* title);
+  void setStale(bool stale);
+  bool dataIsStale(const UiState& u);   // no host answer for STALE_AFTER_S
 
   // --- Text helpers ---
   // Right-aligned text at xRight (with current font)

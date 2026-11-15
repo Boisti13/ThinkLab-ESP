@@ -9,6 +9,7 @@
 #include "display_manager.h"
 #include "serial_client.h"
 #include "touch.h"
+#include "ui_theme.h"
 
 // Modules
 #if USE_WIFI
@@ -30,9 +31,6 @@
 #endif
 #if USE_FANCTRL
 #include "modules/fanctrl.h"
-#endif
-#if USE_EXPERIMENTAL
-#include "modules/experimental.h"
 #endif
 
 // Pages
@@ -77,8 +75,7 @@ static inline void renderNow()
 
 static inline void renderDebugDirect()
 {
-  auto &d = g_disp.display();
-  g_pageDebug.render(d, g_host, g_ui);
+  g_disp.renderPage(&g_pageDebug, g_host, g_ui);
 }
 
 // ---- splash ----
@@ -187,9 +184,6 @@ void setup()
 #if USE_FANCTRL
   fanCtrlBegin();
 #endif
-#if USE_EXPERIMENTAL
-  experimentalBegin();
-#endif
 
   // Register pages; keep Debug registered as debug-only (not in normal roll)
   g_disp.registerPage(&g_pageOverview, /*isDebug*/ false);
@@ -236,9 +230,6 @@ void loop()
   fanCtrlTick(g_host);
 #endif
 
-#if USE_EXPERIMENTAL
-  experimentalTick(g_ui);
-#endif
 
   // --- Handle touch events (non-blocking to allow double-tap)
   ButtonEvent ev = g_touch.poll();
@@ -324,6 +315,21 @@ void loop()
       renderDebugDirect();
       g_ui.lastDebugRefresh = nowDbg;
     }
+  }
+
+  // --- TOUCH mode: redraw the current page with each new answer, and when
+  //     the data turns stale or fresh again (header "!" marker).
+  {
+    static uint32_t seenOk = 0;
+    static bool seenStale = true;
+    const bool stale = ui::dataIsStale(g_ui);
+    const bool fresh = (g_ui.parseOkCount != seenOk);
+    if ((fresh || stale != seenStale) && !g_ui.inDebugMode && g_ui.mode == MODE_TOUCH && bootCleared)
+    {
+      renderNow();
+    }
+    seenOk = g_ui.parseOkCount;
+    seenStale = stale;
   }
 
   // --- Auto mode page rotation (paused in debug mode)

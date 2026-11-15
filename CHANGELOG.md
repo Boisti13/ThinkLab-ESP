@@ -4,6 +4,28 @@ All notable changes, newest first. Each version is tagged `vX.Y.Z` on `main`.
 
 ## Unreleased
 
+## v0.3.1 — 2026-11-15
+
+### Added
+- **The screen follows the data**: in Touch mode the current page redraws with every answer from the host (before, only on a tap, so it could show hours-old numbers). The board asks every minute (was two).
+- **Partial refresh**: redraws without the black-white flash; every 20th is a full refresh to clear ghosting.
+- **Stale marker**: a black "!" in the header of every page when the host hasn't answered for three polls; Status shows the link age compactly (`Online 42s`, `Lost 25m`).
+- **OTA rollback**: a new build is only kept once it gets Wi-Fi; if it doesn't within 5 minutes (or crashes before), the board restarts into the previous build. Tested with a build that had a wrong Wi-Fi password.
+- **Manual fan mode ends by itself** after an hour, or as soon as the case reaches 50 °C; the web page shows the minutes left.
+- `status.json` also reports the host link (`host_age_s`, `host_stale`, `parse_err`), the fan (`fan_auto`, `fan_pct`, `fan_rpm`, `fan_manual_left_s`) and the image state (`image`). `/api/fan/status` adds `manual_left_s`.
+- `homeassistant/thinklab_display.yaml`: Home Assistant package (REST sensors, fan scripts, alerts).
+
+### Changed
+- **VMs/LXCs page**: running guests first, then stopped ones.
+- **Disks page**: no temperature column (the host never reads it, so as not to wake disks).
+- JSON memory 24 KB (was 9 KB; a reply that didn't fit was dropped silently).
+
+### Fixed
+- Status page: the link line ran over its label when it said *Timeout*; the footer drew `[TOUCH]` twice.
+
+### Under the hood
+- Removed the empty `experimental` module, an unused template in `page_vms.cpp`, settings defined twice in `config.h`; `BUILD_VERSION` now follows `FW_VERSION`. All redraws go through `DisplayManager`.
+
 ## v0.3.0 — 2026-11-15
 
 ### Fixed

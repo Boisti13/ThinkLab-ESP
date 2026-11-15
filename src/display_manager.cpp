@@ -1,4 +1,5 @@
 #include "display_manager.h"
+#include "ui_theme.h"
 
 // ---------- ctor ----------
 // IMPORTANT: Construct GxEPD2_BW with a *panel* object, not raw pins.
@@ -78,11 +79,29 @@ void DisplayManager::renderCurrent(const HostState& host, const UiState& ui) {
     const bool includeDbg = (ui.debugEnabled && DEBUG_IN_ROTATION);
     for (uint8_t i = 0; i < _count; ++i) {
       if (_pages[i].isDebug && !includeDbg) continue;
-      _pages[i].page->render(_display, host, ui);
+      draw(_pages[i].page, host, ui);
       return;
     }
     return;
   }
 
-  _pages[real].page->render(_display, host, ui);
+  draw(_pages[real].page, host, ui);
+}
+
+void DisplayManager::renderPage(IPage* page, const HostState& host, const UiState& ui) {
+  if (page) draw(page, host, ui);
+}
+
+// Partial refresh redraws without the black/white flash; every
+// FULL_REFRESH_EVERY redraws a full one clears the ghosting it leaves.
+void DisplayManager::draw(IPage* page, const HostState& host, const UiState& ui) {
+  ui::setStale(ui::dataIsStale(ui));
+  if (_sinceFull >= FULL_REFRESH_EVERY) {
+    _display.setFullWindow();
+    _sinceFull = 0;
+  } else {
+    _display.setPartialWindow(0, 0, _display.width(), _display.height());
+    ++_sinceFull;
+  }
+  page->render(_display, host, ui);
 }

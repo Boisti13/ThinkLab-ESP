@@ -2,6 +2,14 @@
 #include <Fonts/FreeMonoBold9pt7b.h>
 #include <WiFi.h>
 
+static bool s_stale = false;
+void ui::setStale(bool stale) { s_stale = stale; }
+
+bool ui::dataIsStale(const UiState& u) {
+  if (!u.firstDataReady || u.lastParseOkMs == 0) return true;
+  return (millis() - u.lastParseOkMs) > (uint32_t)STALE_AFTER_S * 1000UL;
+}
+
 // =======================
 // Header (centered title)
 // =======================
@@ -20,6 +28,15 @@ void ui::header(Epd_t& d, const __FlashStringHelper* title) {
   d.print(t);
 
   d.drawFastHLine(0, HEADER_H - 1, W, GxEPD_BLACK);
+
+  if (s_stale) {
+    // Black box with a white "!" in the header's left corner
+    d.fillRect(0, 0, 16, HEADER_H - 3, GxEPD_BLACK);
+    d.setTextColor(GxEPD_WHITE);
+    d.setCursor(2, TITLE_BASE);
+    d.print('!');
+    d.setTextColor(GxEPD_BLACK);
+  }
 }
 
 // =======================

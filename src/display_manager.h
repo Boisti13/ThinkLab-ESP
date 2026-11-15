@@ -27,6 +27,8 @@ public:
   void   registerPage(IPage* page, bool isDebug);
   uint8_t pageCount(const UiState& ui) const;   // counts pages included in rotation
   void   renderCurrent(const HostState& host, const UiState& ui);
+  void   renderPage(IPage* page, const HostState& host, const UiState& ui); // e.g. Debug
+  void   forceFullRefresh() { _sinceFull = FULL_REFRESH_EVERY; }       // next redraw is a full one
 
   Epd_t& display();                              // access to underlying GxEPD2
 
@@ -36,6 +38,10 @@ private:
 
   Entry   _pages[MAX_PAGES];
   uint8_t _count;
+  uint16_t _sinceFull = FULL_REFRESH_EVERY;   // first redraw is a full refresh
+
+  // Choose full or partial refresh and the stale marker, then draw
+  void    draw(IPage* page, const HostState& host, const UiState& ui);
 
   // Map UiState.currentPage (filtered index) to actual index in _pages[]
   int     mapUiIndexToReal(const UiState& ui) const;

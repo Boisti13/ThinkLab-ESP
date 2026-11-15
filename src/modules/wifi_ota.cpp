@@ -8,6 +8,7 @@
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
 #include <esp_wifi.h>
+#include <esp_ota_ops.h>
 
 // ===== Macros (override via build_flags / extra.ini) =========================
 #ifndef WIFI_SSID
@@ -44,6 +45,42 @@ static uint32_t lastResetMs       = 0;   // last full Wi-Fi restart
 // Upload state (prevents mid-upload Wi-Fi resets & defers reboot)
 static volatile bool inUpload      = false;
 static bool          pendingReboot = false;
+
+// ---- OTA rollback -----------------------------------------------------------
+// The Arduino core normally marks a new build valid right at boot. Taking that
+// over means a build that never gets Wi-Fi (or crashes before) is undone by the
+// bootloader: it restarts into the previous build.
+extern "C" bool verifyRollbackLater() { return true; }
+
+static bool s_imagePending = false;   // running a new OTA build not yet confirmed
+
+static void otaCheckImage() {
+  esp_ota_img_states_t st;
+  const esp_partition_t* running = esp_ota_get_running_partition();
+  s_imagePending = running && esp_ota_get_state_partition(running, &st) == ESP_OK &&
+                   st == ESP_OTA_IMG_PENDING_VERIFY;
+}
+
+static void otaConfirmImage() {
+  if (!s_imagePending) return;
+  esp_ota_mark_app_valid_cancel_rollback();
+  s_imagePending = false;
+}
+
+// State of the running image as the bootloader sees it (for status.json)
+const char* wifiOtaImageState() {
+  esp_ota_img_states_t st;
+  const esp_partition_t* running = esp_ota_get_running_partition();
+  if (!running || esp_ota_get_state_partition(running, &st) != ESP_OK) return "factory";
+  switch (st) {
+    case ESP_OTA_IMG_NEW:            return "new";       // bootloader without rollback
+    case ESP_OTA_IMG_PENDING_VERIFY: return "pending";
+    case ESP_OTA_IMG_VALID:          return "valid";
+    case ESP_OTA_IMG_INVALID:        return "invalid";
+    case ESP_OTA_IMG_ABORTED:        return "aborted";
+    default:                         return "undefined";
+  }
+}
 
 // ---- mDNS + ArduinoOTA ------------------------------------------------------
 static void startMDNS() {
@@ -111,6 +148,7 @@ static void onWiFiEvent(WiFiEvent_t event) {
     case ARDUINO_EVENT_WIFI_STA_GOT_IP:
       wifiConnected  = true;
       failStreak     = 0;
+      otaConfirmImage();   // reachable again: keep this build
       startMDNS();
       ensureArduinoOTA();
       break;
@@ -144,12 +182,17 @@ static void wifiMaintain() {
 
 // ===== Public API ============================================================
 void wifiOtaSetup() {
+  otaCheckImage();
   WiFi.onEvent(onWiFiEvent);
   wifiBeginFresh();     // kick off Wi-Fi (non-blocking)
   webServerSetup();     // new: website lives in its own module
 }
 
 void wifiOtaLoop() {
+  // A new build that gets no Wi-Fi in time goes back to the previous one
+  if (s_imagePending && !inUpload && millis() > OTA_VERIFY_TIMEOUT_MS) {
+    esp_ota_mark_app_invalid_rollback_and_reboot();
+  }
   wifiMaintain();
   server.handleClient();           // web module’s server
   if (wifiConnected && otaInit) {

@@ -45,28 +45,6 @@ static void drawStatusIcon(Epd_t& d, int16_t xRight, int16_t baselineY, bool run
 // If the guest total > cap: render (cap-1) real entries and then a "+N more" line.
 // `count` is how many entries the board kept (at most MAX_GUESTS); `total` is
 // how many the host reported, so "+N more" counts the ones not kept too.
-// Returns lines consumed.
-template <typename ItemT>
-static uint8_t renderListWithStrictCap(
-  Epd_t& d,
-  const ItemT* list,
-  uint8_t count,
-  int16_t& y,
-  const int16_t bulletX,
-  const int16_t nameStartX,
-  const int16_t valueR,
-  const int16_t gapMin,
-  const int16_t ICON_W,
-  const int16_t LINE_H
-) {
-  if (count == 0) return 0;
-
-  const uint8_t cap = (uint8_t)((void)ICON_W, 0); // placeholder to silence unused warning in generic template
-  // We'll pass the cap via a lambda wrapper below. This template keeps logic generic.
-  return 0;
-}
-
-// Wrapper with explicit cap value to avoid template parameter clutter
 template <typename ItemT>
 static uint8_t renderListWithStrictCapCap(
   Epd_t& d,

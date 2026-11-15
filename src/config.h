@@ -17,6 +17,9 @@
 #ifndef BUILD_TIMESTAMP
 #define BUILD_TIMESTAMP __DATE__ " " __TIME__
 #endif
+#ifndef BUILD_VERSION
+#define BUILD_VERSION "v" FW_VERSION   // shown on the web page and in status.json
+#endif
 
 // Feature toggles
 #ifndef USE_WIFI
@@ -76,16 +79,32 @@
 
 
 // Timings (ms)
-#define POLL_INTERVAL_MS 120000
-#define DISPLAY_INTERVAL_MS 5000
-#define PAGE_DWELL_MS 5000
-#define DEBOUNCE_MS 30
-#define LONG_PRESS_MS 1200
-#define VERY_LONG_PRESS_MS 3500
+#ifndef POLL_INTERVAL_MS
+#define POLL_INTERVAL_MS 60000      // ask the host this often; the page redraws with each answer
+#endif
+#ifndef DISPLAY_INTERVAL_MS
+#define DISPLAY_INTERVAL_MS 5000    // AUTO mode: time per page
+#endif
+
+// Data older than this is marked on every page (header shows "!")
+#ifndef STALE_AFTER_S
+#define STALE_AFTER_S (3 * POLL_INTERVAL_MS / 1000)
+#endif
+
+// E-paper: partial refreshes in between, a full one every N redraws to clear ghosting
+#ifndef FULL_REFRESH_EVERY
+#define FULL_REFRESH_EVERY 20
+#endif
+
+// OTA rollback: a new build must get Wi-Fi within this time, or the board
+// restarts and the bootloader goes back to the previous build.
+#ifndef OTA_VERIFY_TIMEOUT_MS
+#define OTA_VERIFY_TIMEOUT_MS 300000
+#endif
 
 // Buffers
 #define RX_LINEBUF_BYTES 12288
-#define JSON_DOC_BYTES 24576
+#define JSON_DOC_BYTES 24576        // ArduinoJson memory for one answer (~5 KB needed for 16 guests)
 
 // Host timeout
 #ifndef LINK_TIMEOUT_S
@@ -176,6 +195,14 @@
 #endif
 #ifndef FAN_TICK_MS
 #define FAN_TICK_MS 200 // 5 Hz
+#endif
+// Manual duty from the web page ends after this long, or as soon as the case
+// reaches FAN_MANUAL_OVERRIDE_C, and the curve takes over again.
+#ifndef FAN_MANUAL_MAX_MS
+#define FAN_MANUAL_MAX_MS 3600000UL
+#endif
+#ifndef FAN_MANUAL_OVERRIDE_C
+#define FAN_MANUAL_OVERRIDE_C 50
 #endif
 
 // Curve points (°C → duty %)
